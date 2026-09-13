@@ -50,16 +50,13 @@ Finished Product Stock
 Sales / Customers / Payments
 ```
 
-Every important physical movement is tracked so the system can answer:
-- how many crates are on the vehicle;
-- how many crates are in each cold store;
-- how much of each load is inside each cold store;
-- how many crates each custodian received and returned;
-- what each custodian still owes;
+The platform must be able to answer:
+- how many crates/weight remain on each vehicle/load;
+- how much of each load is in each cold store;
+- how many crates each custodian received, returned, and still owes;
 - how much raw material was processed;
-- how much finished product was produced;
-- what was sold and what remains in finished stock;
-- supplier and customer balances;
+- how much finished product was produced and sold;
+- supplier/customer balances;
 - who performed authenticated web actions.
 
 ## 3. Core physical rules
@@ -72,31 +69,27 @@ For a load:
 - `on_vehicle_*` = current amount still on the vehicle.
 - `available_*` = current raw material available for facility/cold-store processing.
 
-Vehicle-to-facility movement cannot exceed what remains on the vehicle.
+Vehicle/facility movements cannot exceed the quantity currently available at their source.
 
 ### Cold stores
-Cold stores are independent physical locations such as:
-- `براد 1`
-- `براد 2`
-- `براد 3`
+Cold stores are independent physical locations such as `براد 1`, `براد 2`, etc.
 
 Each cold store has:
 - name/code;
 - optional crate standard;
-- current crates count;
-- current weight;
+- current crate/weight balance;
 - active/closed state;
 - per-load stock records.
 
-A load can exist in multiple cold stores, while each cold store still knows exactly how much of that load it owns.
+A load can be split across multiple cold stores. Each `ColdStoreStock` records the exact part of that load held by that location.
 
 Closed cold stores cannot receive or issue stock.
 
-A cold store cannot be closed while:
+A cold store cannot close while:
 - current physical stock is greater than zero; or
 - custody crates are still outstanding.
 
-### Crate standard
+### Crate standards
 Crate standards define gross and tare weight and derive net weight.
 
 Example:
@@ -109,13 +102,13 @@ Net   = 22.5 kg
 21 crates = 21 x 22.5 = 472.5 kg net
 ```
 
-For cold-store issue/move/return operations, when explicit weight is not supplied, the cold store's assigned crate standard calculates the net weight automatically.
+When an operation omits explicit weight, the assigned active crate standard may calculate net weight automatically.
 
 ## 4. Custody / people taking crates
 
 `Custodians` represent people receiving crates from cold stores.
 
-A custodian can receive multiple open issues over time under the same person.
+A custodian can receive repeated issues over time under the same person.
 
 Example:
 
@@ -131,20 +124,20 @@ The custody summary tracks:
 - total returned crates/weight;
 - current outstanding crates/weight.
 
-A return cannot exceed the custodian's currently outstanding amount.
+A return cannot exceed current outstanding custody.
 
-A return destination is one of:
+Return destinations are:
 - `vehicle` -> vehicle balance increases;
 - `cold_store` -> cold-store stock and facility balance increase.
 
-All issue/return operations are recorded as immutable transaction history.
+Custody movements are recorded as transaction history. Returning custody to a vehicle does **not** mean the load is unloaded; the load remains open while vehicle stock exists.
 
 ## 5. Processing and finished products
 
 Raw pomegranate can be processed into:
 - `peeling` -> Pomegranate Arils;
 - `juice` -> Pomegranate Juice;
-- plus recorded waste.
+- recorded waste.
 
 Processing validates:
 - process type;
@@ -153,8 +146,8 @@ Processing validates:
 - input crates/weight cannot exceed available raw stock;
 - selected cold-store stock cannot be exceeded.
 
-### Important stock-consistency rule
-Processing is tied to the selected cold store and updates all related balances atomically:
+### Stock consistency rule
+Processing is tied to the selected active cold store and atomically reduces:
 
 ```text
 ColdStoreStock
@@ -164,13 +157,9 @@ ColdStore.current_*
 PomegranateLoad.available_*
 ```
 
-The three physical aggregates are kept consistent in the same database transaction.
+Each processing batch stores `cold_store_id`, so processing history can be traced to its physical source.
 
-Each processing batch stores its `cold_store_id` so production history is traceable back to the physical source.
-
-The processing HTTP flow therefore requires a real active cold store containing the selected load. The UI exposes active cold stores and the action enforces the relation at domain level.
-
-Finished product stock has its own current balance and transaction ledger.
+Finished products have current stock plus a transaction ledger.
 
 ## 6. Sales and customers
 
@@ -178,12 +167,12 @@ Finished products are sold through invoices.
 
 A sale:
 - validates the customer and active product;
-- validates available finished stock;
 - aggregates duplicate product lines before stock validation;
+- validates available finished stock;
 - creates invoice/items;
 - decreases finished stock;
-- records a negative finished-product stock ledger transaction;
-- records initial payment when present;
+- writes a negative finished-stock transaction;
+- records initial payment when provided;
 - maintains invoice status.
 
 Invoice statuses:
@@ -191,30 +180,26 @@ Invoice statuses:
 - `partial`
 - `paid`
 
-Customer balance:
+Customer balance is calculated as:
 
 ```text
 Sales total - Paid total = Balance due
 ```
 
-Later customer payments cannot exceed the remaining invoice balance.
+Customer payments cannot exceed the remaining balance.
 
 ## 7. Supplier purchases and payments
 
-A pomegranate load can have one supplier purchase record.
+A pomegranate load can have exactly one supplier purchase record.
 
 Supported pricing units:
 - `kg`
 - `crate`
 - `fixed`
 
-Quantity can default from the load when the pricing model supports it.
+A database unique index on `pomegranate_load_id` prevents duplicate purchase rows for a single load. The Action also converts duplicate attempts into a validation error instead of exposing a raw database exception.
 
-Initial supplier payment is written into the supplier payment ledger.
-
-A later supplier payment cannot exceed the remaining purchase balance.
-
-A database unique index prevents more than one purchase record for the same `pomegranate_load_id`.
+Supplier payments are recorded in a ledger and cannot exceed the remaining supplier balance.
 
 ## 8. Reports
 
@@ -222,27 +207,25 @@ A database unique index prevents more than one purchase record for the same `pom
 
 The operational report summarizes:
 - receiving;
-- supplier purchases;
-- supplier payments;
+- supplier purchases and payments;
 - processing by type;
-- yield/output;
-- waste;
+- yield/output and waste;
 - sales;
 - customer balances;
 - finished-product stock;
 - current active cold-store stock;
-- outstanding custody crates.
+- outstanding custody.
 
 ## 9. Authentication, roles, and permissions
 
 Native Laravel authentication is used.
 
-Roles currently defined:
+Roles:
 
 | Role | Scope |
 |---|---|
 | `admin` | All permissions |
-| `manager` | Operational/finance/report/audit access, but not user management |
+| `manager` | Operational/finance/report/master-data/audit access, but not user management |
 | `storekeeper` | Receiving, cold stores, custody, processing, reports |
 | `accountant` | Suppliers, customers, sales, payments, reports |
 | `worker` | Processing only |
@@ -259,6 +242,7 @@ Permissions:
 - `manage_payments`
 - `view_reports`
 - `view_audit`
+- `manage_master_data`
 
 Authorization exists at route middleware level through `permission:` and at application level through `User::canPermission()`.
 
@@ -266,28 +250,58 @@ Inactive users cannot authenticate or use role permissions.
 
 ## 10. Management screen
 
-The management area is implemented rather than left as a placeholder.
+`/management` provides real user management rather than a placeholder.
 
 Current capabilities:
 - list users;
 - create user;
 - assign role during creation;
 - activate/deactivate users;
-- prevent the currently authenticated admin from disabling themselves.
+- prevent the current authenticated user from disabling themselves.
 
-Current limitation intentionally left for later:
-- existing users do not yet have an inline role-edit form.
+Known limitation:
+- existing users do not yet have a dedicated inline role-edit form.
 
 ## 11. Accounting screen
 
-The accounting area is implemented rather than left as a placeholder.
-
-It exposes:
+`/accounting` provides:
 - active customer balances;
 - supplier balances;
 - links to detailed customer/supplier account pages where available.
 
-## 12. Audit logging
+The route uses the controller `index` method explicitly rather than invokable-controller registration.
+
+## 12. Master Data Management
+
+`/master-data` is the central setup area for records required by operations.
+
+Current management capabilities:
+- Vehicles: create vehicles and preserve their historical identity for past loads.
+- Cold Stores: create stores and safely close stores through `CloseColdStoreAction`.
+- Custodians: create custodians and activate/deactivate them.
+- Crate Standards: create standards and activate/deactivate them.
+- Finished Products: create products and activate/deactivate them.
+
+Only `admin` and `manager` have `manage_master_data`.
+
+Master data routes:
+
+```text
+GET  /master-data
+POST /master-data/vehicles
+POST /master-data/cold-stores
+POST /master-data/cold-stores/{coldStore}/close
+POST /master-data/custodians
+POST /master-data/custodians/{custodian}/toggle
+POST /master-data/crate-standards
+POST /master-data/crate-standards/{crateStandard}/toggle
+POST /master-data/products
+POST /master-data/products/{product}/toggle
+```
+
+Mutation redirects intentionally return to the named `master-data` route so HTTP tests and user navigation have a deterministic destination even when no HTTP Referer exists.
+
+## 13. Audit logging
 
 Authenticated web requests create audit records containing request/activity metadata including:
 - user;
@@ -303,7 +317,7 @@ Authenticated web requests create audit records containing request/activity meta
 
 The audit screen is protected by `view_audit`.
 
-## 13. Database model map
+## 14. Database model map
 
 Main tables:
 
@@ -329,9 +343,9 @@ Main tables:
 - `customer_payments`
 - `audit_logs`
 
-`processing_batches` now includes `cold_store_id` to retain the physical source of each processing run.
+`processing_batches` includes `cold_store_id` to retain the physical source of each processing run.
 
-## 14. Main domain Actions implemented
+## 15. Main domain Actions implemented
 
 - `CreatePomegranateLoadAction`
 - `RecordCrateMovementAction`
@@ -352,13 +366,14 @@ Main tables:
 - `GetOperationalReportAction`
 - `AuthenticateUserAction`
 
-## 15. Controllers / web screens
+## 16. Controllers / web screens
 
 Current web areas include:
 - `/login`
 - `/dashboard`
 - `/management`
 - `/accounting`
+- `/master-data`
 - `/receiving`
 - `/warehouse`
 - `/warehouse/custody`
@@ -368,9 +383,9 @@ Current web areas include:
 - `/reports`
 - `/audit`
 
-The Blade UI is RTL Arabic-oriented and currently uses Tailwind CDN for the MVP presentation layer.
+The Blade UI is RTL Arabic-oriented and currently uses Tailwind CDN for MVP presentation.
 
-## 16. Important implementation guarantees
+## 17. Important implementation guarantees
 
 Stock-changing operations are designed around:
 - database transactions;
@@ -378,100 +393,70 @@ Stock-changing operations are designed around:
 - explicit validation before mutation;
 - immutable movement/settlement ledger records.
 
-This is especially important for concurrent operations on:
+These guarantees are especially important for concurrent operations on:
 - vehicle quantities;
 - cold-store quantities;
 - custodian balances;
 - finished-product stock;
 - supplier/customer settlements.
 
-## 17. Automated tests
+Business rules should be fixed in domain logic, not weakened merely to satisfy a test.
 
-The repository contains Feature tests covering:
+## 18. Automated tests
+
+Feature coverage includes:
 - authentication;
 - role/permission authorization;
 - audit logging;
 - cold-store custody flows;
-- crate-standard weight calculation;
+- crate-standard calculations;
 - receiving and processing HTTP workflow;
 - processing and finished stock;
 - sales/customer payments;
 - supplier purchases/payments;
-- reporting;
+- reports;
 - management/accounting screens;
+- master-data management;
 - duplicate supplier purchase prevention.
 
 ### Current user-confirmed local verification
 
-After pulling commit `86e8d2a`, the local project was verified with:
+After pulling commit `c2f96ec`, the user ran:
 
 ```text
-53 passed (245 assertions)
-Duration: 2.16s
+Tests:    56 passed (276 assertions)
+Duration: 2.32s
 ```
 
-The following command also completed successfully with no pending migration at that point:
+All tests passed on the user's local machine. No new migration was required for the redirect-only commit `c2f96ec`.
 
-```text
-php artisan migrate
-INFO  Nothing to migrate.
-```
+## 19. Important production-audit fixes
 
-This is the current user-confirmed test baseline for the code present on the user's machine.
+### Invalid AccountingController route
+`AccountingController` exposes `index()`, so `/accounting` is registered explicitly as a controller method route.
 
-## 18. Recent production-audit findings and fixes
-
-### Issue A — invalid AccountingController route
-Problem:
-`AccountingController` was registered as an invokable controller even though it exposes `index()`.
-
-Fix:
-
-```php
-Route::get('/accounting', [AccountingController::class, 'index']);
-```
-
-Result:
-Migration and tests could load the route table normally.
-
-### Issue B — duplicate supplier purchase per load
-Problem:
-The application could attempt multiple purchase rows for one incoming load.
-
-Fixes:
-- database unique index on `pomegranate_load_id`;
-- Action-level validation using `ValidationException` instead of exposing a raw DB error.
+### Duplicate supplier purchase
+A unique database index plus Action-level validation prevents more than one purchase record per load.
 
 Migration:
 `2026_09_13_140001_prevent_duplicate_purchases_per_load.php`
 
-### Issue C — processing/cold-store stock divergence
-Problem:
-Processing originally reduced `PomegranateLoad.available_*` but did not reduce the corresponding cold-store stock aggregates.
-
-Fix:
-Processing now accepts the selected cold store and atomically reduces:
-- the per-load `ColdStoreStock` balance;
-- the cold store current balance;
-- the load available balance;
-- while recording `cold_store_id` on the processing batch.
-
-The processing screen and controller were updated to require an active cold store selection, and regression coverage was added to both domain and HTTP tests.
+### Processing/cold-store stock divergence
+Processing now updates cold-store per-load stock, cold-store aggregate stock, and load available stock atomically and records `cold_store_id` on the batch.
 
 Migration:
 `2026_09_13_150001_add_cold_store_to_processing_batches_table.php`
 
-### Issue D — incorrect custody regression test
-A temporary regression test assumed returning custody to the vehicle should mark the load `unloaded`. That assumption was incorrect because the stock had returned to the vehicle.
+### Custody regression correction
+A regression assumption was corrected so returning custody to the vehicle restores vehicle stock while the load remains open.
 
-The test was corrected to assert that the vehicle balance is restored and the load remains `open`.
+### HTTP processing-state correction
+The processing HTTP test now uses the real sequence: receive -> move to cold store -> process from that cold store.
 
-### Issue E — HTTP processing test state mismatch
-After processing was made dependent on a real cold-store stock record, the existing HTTP workflow test still constructed an impossible state (`available` stock with zero stock on vehicle) and then attempted another vehicle-to-cold-store move.
+### Master-data redirect contract
+Master-data mutations use deterministic redirects to the `/master-data` named route instead of relying on `back()` with an available HTTP Referer.
 
-The test setup was corrected to use the real flow: receive on vehicle -> move to cold store -> process from that cold store.
-
-## 19. Git / delivery workflow
+## 20. Git / delivery workflow
 
 Work is committed directly to `main` for this project.
 
@@ -486,37 +471,46 @@ php artisan test
 
 Do not use `migrate:fresh` against a real data environment just to validate a normal migration.
 
-When `git pull` fails due to a temporary network/GitHub connection issue, do not assume code was updated locally; retry the pull and then re-run migration/tests after the exact commit is present.
+Always verify that the exact pulled commit is present before treating local tests as evidence for the current repository state.
 
-## 20. Production-readiness checklist
+## 21. Production-readiness checklist
 
 Before deployment, verify:
-
-### Required
 - production `.env` values;
 - `APP_ENV=production`;
 - `APP_DEBUG=false`;
 - secure `APP_KEY`;
 - production database credentials;
 - HTTPS;
-- queue/scheduler configuration if later introduced;
 - regular database backups;
-- log/monitoring strategy;
+- logs/monitoring;
 - final migration backup and deployment plan;
-- local test suite passes after pulling the exact deployment commit.
+- full test suite against the exact deployment commit.
 
-### Known MVP limitations / future enhancements
-These are not currently considered blockers to the core physical workflow, but should be planned:
-- full role editing for existing users;
-- richer vehicle/load history UI;
-- dedicated finished-product inventory/history screen;
-- more detailed custody weight analytics in operational reports;
-- selectable payment dates instead of always using the current timestamp;
-- explicit date-format validation for report query parameters;
-- replacing Tailwind CDN with a compiled production asset pipeline when the UI is finalized;
-- production-safe data migration review if duplicate purchase records already exist in a populated database.
+## 22. Known MVP limitations / planned work
 
-## 21. Current status
+These do not currently block the core physical workflow, but should be addressed in priority order:
+
+### High priority
+1. **Stock Adjustments** — formal inventory adjustment for damaged crates, spoilage, physical-count differences, and other approved discrepancies. Every adjustment must have a reason, actor, timestamp, positive/negative movement, immutable ledger entry, and safe balance validation.
+2. **Inventory / movement history** — dedicated traceable history for receiving, vehicle movement, cold-store movement, custody issue/return, and processing, with useful filters/search/pagination.
+3. **Finished-product inventory/history** — dedicated stock screen and movement history.
+
+### Medium priority
+4. Full role editing for existing users.
+5. Richer vehicle/load management and history UI.
+6. Selectable payment dates instead of always using the current timestamp.
+7. Stronger report date validation.
+8. Better error UX, empty states, confirmations, search/filter/pagination.
+
+### Production hardening
+9. Replace Tailwind CDN with compiled production assets when the UI is finalized.
+10. Production-safe data migration review where the existing database is already populated.
+11. Concurrency-focused tests.
+12. Backup/restore drill, deployment procedure, monitoring, and final security review.
+13. Full end-to-end business journey test from receiving through sale/payment.
+
+## 23. Current status
 
 Core MVP domains implemented:
 
@@ -529,44 +523,43 @@ Open custody ledger           ✅
 Processing                    ✅
 Finished stock                ✅
 Sales / customers             ✅
-Supplier purchases/payments  ✅
+Supplier purchases/payments   ✅
 Operational reports           ✅
-Authentication               ✅
-Roles / permissions           ✅
-Audit log                    ✅
+Authentication                ✅
+Roles / permissions            ✅
+Audit log                     ✅
 Management screen             ✅
 Accounting screen             ✅
+Master Data                   ✅
 Blade screens                 ✅
 Automated feature tests       ✅
 
-Final production hardening    🔄
+Stock Adjustments             ⏳
+Movement history              ⏳
+Finished inventory screen     ⏳
+Production hardening          🔄
 ```
 
-Current verified baseline:
-`53 passed (245 assertions)` on the user's local machine.
+### Verified local baseline
 
-The target is a working, traceable business platform first; cosmetic enhancements and non-blocking convenience features should not replace fixing real business-data integrity issues.
+```text
+56 passed (276 assertions)
+```
 
-## 22. Important recent commits
+The working principle remains: build a traceable business platform first. Non-blocking cosmetic enhancements must not replace fixing real business-data integrity risks.
 
-- `666f72c` — fix AccountingController route registration.
-- `11513dc` — added custody regression coverage, later corrected.
-- `5842353` — corrected custody regression test scenario.
-- `80e1c111` — processing/cold-store stock consistency audit update and related tests.
-- `fb9eaed` — added this project documentation file.
-- `86e8d2a` — corrected HTTP processing test setup after enforcing real cold-store processing flow.
-- `6cf7f408` — processing consistency implementation sequence included the cold-store-aware processing changes and migration.
-
-## 23. Working rule for future changes
+## 24. Working rule for future changes
 
 Do not weaken domain rules just to make a test pass.
 
 For every business-data change:
-1. identify the real physical/financial invariant;
+1. identify the real physical or financial invariant;
 2. change the Domain Action first;
-3. update the controller/UI contract;
-4. add or update Feature tests;
-5. run the full suite;
-6. update this documentation when the workflow or business rules change.
-
-The repository's source of truth is the code plus this documentation file, with passing automated tests as the verification gate.
+3. keep controller logic thin and HTTP-focused;
+4. wrap stock-changing mutations in database transactions;
+5. lock relevant rows with `lockForUpdate()` where concurrent balance changes are possible;
+6. record immutable ledger/history entries for physical or financial movements;
+7. add/update Feature tests for the real business scenario;
+8. run the full local test suite;
+9. commit the verified change to `main`;
+10. pull the exact commit locally before accepting the next change.
