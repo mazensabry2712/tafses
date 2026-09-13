@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ManagementController;
 use App\Http\Controllers\ProcessingController;
 use App\Http\Controllers\ReceivingController;
 use App\Http\Controllers\ReportsController;
@@ -25,14 +27,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    Route::get('/management', fn () => 'Management area')
+    Route::get('/management', [ManagementController::class, 'index'])
         ->middleware('permission:'.Permissions::MANAGE_USERS)
         ->name('management');
+    Route::post('/management/users', [ManagementController::class, 'store'])
+        ->middleware('permission:'.Permissions::MANAGE_USERS)
+        ->name('management.store');
+    Route::post('/management/users/{user}/toggle', [ManagementController::class, 'toggleActive'])
+        ->middleware('permission:'.Permissions::MANAGE_USERS)
+        ->name('management.toggle');
 
     Route::get('/warehouse', [WarehouseController::class, 'index'])
         ->middleware('permission:'.Permissions::MANAGE_COLD_STORES)
         ->name('warehouse');
-
     Route::get('/warehouse/custody', [WarehouseController::class, 'custody'])
         ->middleware('permission:'.Permissions::MANAGE_CUSTODY)
         ->name('warehouse.custody');
@@ -40,7 +47,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/receiving', [ReceivingController::class, 'index'])
         ->middleware('permission:'.Permissions::RECEIVE_LOADS)
         ->name('receiving.index');
-
     Route::post('/receiving/loads', [ReceivingController::class, 'store'])
         ->middleware('permission:'.Permissions::RECEIVE_LOADS)
         ->name('receiving.loads.store');
@@ -48,7 +54,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/processing', [ProcessingController::class, 'index'])
         ->middleware('permission:'.Permissions::PROCESS_POMEGRANATES)
         ->name('processing.index');
-
     Route::post('/processing/loads/{load}', [ProcessingController::class, 'store'])
         ->middleware('permission:'.Permissions::PROCESS_POMEGRANATES)
         ->name('processing.store');
@@ -56,15 +61,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales', [SalesController::class, 'index'])
         ->middleware('permission:'.Permissions::MANAGE_SALES)
         ->name('sales.index');
-
     Route::get('/sales/customers/{customer}', [SalesController::class, 'customer'])
         ->middleware('permission:'.Permissions::MANAGE_CUSTOMERS)
         ->name('sales.customer');
-
     Route::post('/sales/customers/{customer}/invoices', [SalesController::class, 'store'])
         ->middleware('permission:'.Permissions::MANAGE_SALES)
         ->name('sales.store');
-
     Route::post('/sales/customers/{customer}/invoices/{sale}/payments', [SalesController::class, 'payment'])
         ->middleware('permission:'.Permissions::MANAGE_PAYMENTS)
         ->name('sales.payment');
@@ -72,19 +74,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/suppliers', [SuppliersController::class, 'index'])
         ->middleware('permission:'.Permissions::MANAGE_SUPPLIERS)
         ->name('suppliers.index');
-
     Route::post('/suppliers', [SuppliersController::class, 'store'])
         ->middleware('permission:'.Permissions::MANAGE_SUPPLIERS)
         ->name('suppliers.store');
-
     Route::get('/suppliers/{supplier}', [SuppliersController::class, 'show'])
         ->middleware('permission:'.Permissions::MANAGE_SUPPLIERS)
         ->name('suppliers.show');
-
     Route::post('/suppliers/{supplier}/purchases', [SuppliersController::class, 'purchaseStore'])
         ->middleware('permission:'.Permissions::MANAGE_SUPPLIERS)
         ->name('suppliers.purchases.store');
-
     Route::post('/suppliers/{supplier}/purchases/{purchase}/payments', [SuppliersController::class, 'paymentStore'])
         ->middleware('permission:'.Permissions::MANAGE_PAYMENTS)
         ->name('suppliers.purchases.payments.store');
@@ -92,15 +90,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/warehouse/loads/{load}/cold-store', [WarehouseController::class, 'moveToColdStore'])
         ->middleware('permission:'.Permissions::MANAGE_COLD_STORES)
         ->name('warehouse.loads.cold-store');
-
     Route::post('/warehouse/{coldStore}/loads/{load}/custodians/{custodian}/issue', [WarehouseController::class, 'issue'])
         ->middleware('permission:'.Permissions::MANAGE_CUSTODY)
         ->name('warehouse.custody.issue');
-
     Route::post('/warehouse/{coldStore}/loads/{load}/custodians/{custodian}/return', [WarehouseController::class, 'returnCustody'])
         ->middleware('permission:'.Permissions::MANAGE_CUSTODY)
         ->name('warehouse.custody.return');
-
     Route::post('/warehouse/{coldStore}/close', [WarehouseController::class, 'close'])
         ->middleware('permission:'.Permissions::MANAGE_COLD_STORES)
         ->name('warehouse.close');
@@ -108,11 +103,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports', [ReportsController::class, 'index'])
         ->middleware('permission:'.Permissions::VIEW_REPORTS)
         ->name('reports.index');
-
-    Route::get('/accounting', fn () => 'Accounting area')
+    Route::get('/accounting', AccountingController::class)
         ->middleware('permission:'.Permissions::MANAGE_PAYMENTS)
         ->name('accounting');
-
     Route::get('/audit', [AuditLogController::class, 'index'])
         ->middleware('permission:'.Permissions::VIEW_AUDIT)
         ->name('audit.index');
