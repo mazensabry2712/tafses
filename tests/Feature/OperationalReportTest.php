@@ -6,10 +6,10 @@ use App\Actions\GetOperationalReportAction;
 use App\Actions\ProcessPomegranatesAction;
 use App\Actions\RecordSupplierPaymentAction;
 use App\Models\ColdStore;
-use App\Models\Custodian;
 use App\Models\FinishedProduct;
 use App\Models\FinishedProductStock;
 use App\Models\PomegranateLoad;
+use App\Models\ProcessingBatch;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
 use App\Models\Vehicle;
@@ -45,15 +45,19 @@ test('operational report summarizes receiving purchases processing sales and cur
     app(RecordSupplierPaymentAction::class)->execute($purchase, 500, 'cash');
     SupplierPayment::query()->latest('id')->update(['paid_at' => $reportDate]);
 
-    app(ProcessPomegranatesAction::class)->execute($load, 'peeling', 20, 400, 250, 50);
+    $batch = app(ProcessPomegranatesAction::class)->execute($load, 'peeling', 20, 400, 250, 50);
+    $batch->processed_at = $reportDate;
+    $batch->save();
 
     $product = FinishedProduct::query()->where('code', 'peeling')->firstOrFail();
-    app(CreateFinishedProductSaleAction::class)->execute(
+    $sale = app(CreateFinishedProductSaleAction::class)->execute(
         $customer,
         [['finished_product_id' => $product->id, 'quantity' => 50, 'unit_price' => 80]],
         'INV-REPORT-001',
         1000,
     );
+    $sale->sold_at = $reportDate;
+    $sale->save();
 
     $summary = app(GetOperationalReportAction::class)->execute(
         Carbon::parse('2026-09-10'),
