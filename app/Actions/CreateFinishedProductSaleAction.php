@@ -22,8 +22,7 @@ class CreateFinishedProductSaleAction
             $customer = Customer::query()->lockForUpdate()->findOrFail($customer->id);
             if (!$customer->is_active) throw new RuntimeException('The customer is inactive.');
 
-            $prepared = [];
-            $subtotal = 0.0;
+            $quantitiesByProduct = [];
             foreach ($items as $item) {
                 $productId = (int) ($item['finished_product_id'] ?? 0);
                 $quantity = (float) ($item['quantity'] ?? 0);
@@ -31,14 +30,34 @@ class CreateFinishedProductSaleAction
                 if ($productId < 1 || $quantity <= 0 || $unitPrice < 0) {
                     throw new InvalidArgumentException('Sale item quantities and prices are invalid.');
                 }
+                $quantitiesByProduct[$productId] = ($quantitiesByProduct[$productId] ?? 0) + $quantity;
+            }
+
+            $stocks = [];
+            foreach ($quantitiesByProduct as $productId => $requiredQuantity) {
                 $product = FinishedProduct::query()->findOrFail($productId);
                 if (!$product->is_active) throw new RuntimeException('The finished product is inactive.');
                 $stock = FinishedProductStock::query()->where('finished_product_id', $product->id)->lockForUpdate()->first();
                 $available = (float) ($stock?->quantity ?? 0);
-                if ($quantity > $available) throw new RuntimeException("Not enough stock for finished product [{$product->code}].");
+                if ($requiredQuantity > $available) throw new RuntimeException("Not enough stock for finished product [{$product->code}].");
+                $stocks[$productId] = ['product' => $product, 'stock' => $stock];
+            }
+
+            $prepared = [];
+            $subtotal = 0.0;
+            foreach ($items as $item) {
+                $productId = (int) $item['finished_product_id'];
+                $quantity = (float) $item['quantity'];
+                $unitPrice = (float) $item['unit_price'];
                 $lineTotal = round($quantity * $unitPrice, 2);
                 $subtotal += $lineTotal;
-                $prepared[] = compact('product', 'stock', 'quantity', 'unitPrice', 'lineTotal');
+                $prepared[] = [
+                    'product' => $stocks[$productId]['product'],
+                    'stock' => $stocks[$productId]['stock'],
+                    'quantity' => $quantity,
+                    'unitPrice' => $unitPrice,
+                    'lineTotal' => $lineTotal,
+                ];
             }
 
             $subtotal = round($subtotal, 2);
