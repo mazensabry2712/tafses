@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Models\FinishedProduct;
 use App\Models\FinishedProductStock;
 use App\Models\StockAdjustment;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use RuntimeException;
@@ -67,7 +68,7 @@ class CreateFinishedProductStockAdjustmentAction
                 'direction' => $direction,
                 'quantity' => $quantity,
                 'reason' => $reason,
-                'adjusted_at' => $adjustedAt ? now()->parse($adjustedAt) : now(),
+                'adjusted_at' => $adjustedAt ? Carbon::parse($adjustedAt) : now(),
                 'recorded_by' => $recordedBy,
             ]);
 
