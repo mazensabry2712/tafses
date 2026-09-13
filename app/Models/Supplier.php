@@ -10,7 +10,12 @@ class Supplier extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'phone', 'notes'];
+    protected $fillable = ['name', 'phone', 'address', 'is_active', 'notes'];
+
+    protected function casts(): array
+    {
+        return ['is_active' => 'boolean'];
+    }
 
     public function pomegranateLoads(): HasMany
     {
