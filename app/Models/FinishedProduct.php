@@ -27,4 +27,9 @@ class FinishedProduct extends Model
     {
         return $this->hasMany(FinishedProductTransaction::class);
     }
+
+    public function stockAdjustments(): HasMany
+    {
+        return $this->hasMany(StockAdjustment::class);
+    }
 }
