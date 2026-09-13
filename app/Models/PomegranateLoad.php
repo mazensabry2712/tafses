@@ -32,6 +32,7 @@ class PomegranateLoad extends Model
     public function vehicle(): BelongsTo { return $this->belongsTo(Vehicle::class); }
     public function crateMovements(): HasMany { return $this->hasMany(LoadCrateMovement::class); }
     public function processingBatches(): HasMany { return $this->hasMany(ProcessingBatch::class); }
+    public function purchase(): \Illuminate\Database\Eloquent\Relations\HasOne { return $this->hasOne(PomegranatePurchase::class); }
 
     public function refreshStatus(): void
     {
