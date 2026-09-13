@@ -2,11 +2,13 @@
 
 use App\Actions\CreatePomegranateLoadAction;
 use App\Actions\CreatePomegranatePurchaseAction;
+use App\Actions\GetFinishedProductStockAction;
 use App\Actions\GetPomegranateLoadSummaryAction;
 use App\Actions\GetSupplierBalanceAction;
 use App\Actions\ProcessPomegranatesAction;
 use App\Actions\RecordCrateMovementAction;
 use App\Actions\RecordSupplierPaymentAction;
+use App\Models\FinishedProduct;
 use App\Models\PomegranateLoad;
 use App\Models\Supplier;
 use App\Models\Vehicle;
@@ -83,10 +85,10 @@ test('a movement cannot exceed the available quantity', function () {
     $load = makeLoad(['on_vehicle_crates_count' => 10, 'on_vehicle_weight_kg' => 200]);
 
     expect(fn () => app(RecordCrateMovementAction::class)->execute($load, 'vehicle_to_facility', 11, 200))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(\RuntimeException::class);
 });
 
-test('pomegranates can be processed for peeling and reduce available stock', function () {
+test('pomegranates can be processed for peeling and increase finished product stock', function () {
     $load = makeLoad([
         'on_vehicle_crates_count' => 0,
         'on_vehicle_weight_kg' => 0,
@@ -97,12 +99,35 @@ test('pomegranates can be processed for peeling and reduce available stock', fun
 
     $batch = app(ProcessPomegranatesAction::class)->execute($load, 'peeling', 20, 400, 250, 50);
     $load->refresh();
+    $product = FinishedProduct::where('code', 'peeling')->firstOrFail();
+    $stock = app(GetFinishedProductStockAction::class)->execute($product);
 
     expect($batch->process_type)->toBe('peeling')
         ->and((float) $batch->output_weight_kg)->toBe(250.0)
         ->and((float) $batch->waste_weight_kg)->toBe(50.0)
         ->and($load->available_crates_count)->toBe(80)
-        ->and((float) $load->available_weight_kg)->toBe(1600.0);
+        ->and((float) $load->available_weight_kg)->toBe(1600.0)
+        ->and($stock['quantity'])->toBe(250.0);
+});
+
+test('processing can build separate peeling and juice finished stock', function () {
+    $load = makeLoad([
+        'on_vehicle_crates_count' => 0,
+        'on_vehicle_weight_kg' => 0,
+        'available_crates_count' => 100,
+        'available_weight_kg' => 2000,
+        'status' => 'unloaded',
+    ]);
+
+    $processor = app(ProcessPomegranatesAction::class);
+    $processor->execute($load, 'peeling', 30, 600, 360, 90);
+    $processor->execute($load, 'juice', 20, 400, 280, 40);
+
+    $peeling = FinishedProduct::where('code', 'peeling')->firstOrFail();
+    $juice = FinishedProduct::where('code', 'juice')->firstOrFail();
+
+    expect(app(GetFinishedProductStockAction::class)->execute($peeling)['quantity'])->toBe(360.0)
+        ->and(app(GetFinishedProductStockAction::class)->execute($juice)['quantity'])->toBe(280.0);
 });
 
 test('a load summary reports peeling juice and waste outputs', function () {
@@ -159,7 +184,7 @@ test('a supplier payment cannot exceed the remaining purchase balance', function
     $purchase = app(CreatePomegranatePurchaseAction::class)->execute($load, 'crate', 100, null, 0);
 
     expect(fn () => app(RecordSupplierPaymentAction::class)->execute($purchase, 10100))
-        ->toThrow(InvalidArgumentException::class);
+        ->toThrow(\InvalidArgumentException::class);
 });
 
 test('processing cannot consume more stock than is available', function () {
@@ -172,7 +197,7 @@ test('processing cannot consume more stock than is available', function () {
     ]);
 
     expect(fn () => app(ProcessPomegranatesAction::class)->execute($load, 'juice', 11, 200, 150, 20))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(\RuntimeException::class);
 });
 
 test('processing cannot report output and waste above the input weight', function () {
@@ -185,5 +210,5 @@ test('processing cannot report output and waste above the input weight', functio
     ]);
 
     expect(fn () => app(ProcessPomegranatesAction::class)->execute($load, 'juice', 1, 100, 90, 20))
-        ->toThrow(InvalidArgumentException::class);
+        ->toThrow(\InvalidArgumentException::class);
 });
