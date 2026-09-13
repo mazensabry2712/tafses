@@ -16,4 +16,14 @@ class Supplier extends Model
     {
         return $this->hasMany(PomegranateLoad::class);
     }
+
+    public function pomegranatePurchases(): HasMany
+    {
+        return $this->hasMany(PomegranatePurchase::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(SupplierPayment::class);
+    }
 }
