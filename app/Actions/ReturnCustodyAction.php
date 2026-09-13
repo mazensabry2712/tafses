@@ -78,7 +78,6 @@ class ReturnCustodyAction
             if ($destination === 'vehicle') {
                 $load->on_vehicle_crates_count += $cratesCount;
                 $load->on_vehicle_weight_kg = round((float) $load->on_vehicle_weight_kg + $netWeightKg, 3);
-                $load->refreshStatus();
                 $load->save();
             } else {
                 $stock = ColdStoreStock::query()
