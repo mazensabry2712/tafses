@@ -8,6 +8,8 @@ use App\Actions\GetSupplierBalanceAction;
 use App\Actions\ProcessPomegranatesAction;
 use App\Actions\RecordCrateMovementAction;
 use App\Actions\RecordSupplierPaymentAction;
+use App\Actions\MoveLoadToColdStoreAction;
+use App\Models\ColdStore;
 use App\Models\FinishedProduct;
 use App\Models\PomegranateLoad;
 use App\Models\Supplier;
@@ -108,6 +110,39 @@ test('pomegranates can be processed for peeling and increase finished product st
         ->and($load->available_crates_count)->toBe(80)
         ->and((float) $load->available_weight_kg)->toBe(1600.0)
         ->and($stock['quantity'])->toBe(250.0);
+});
+
+test('processing from a cold store consumes both location stock and load available stock', function () {
+    $load = makeLoad();
+    $coldStore = ColdStore::create([
+        'name' => 'براد Audit',
+        'code' => 'AUDIT-STORE',
+    ]);
+
+    app(MoveLoadToColdStoreAction::class)->execute($load, $coldStore, 40, 800);
+    $batch = app(ProcessPomegranatesAction::class)->execute(
+        $load,
+        'peeling',
+        10,
+        200,
+        120,
+        30,
+        null,
+        'cold store processing test',
+        $coldStore,
+    );
+
+    $load->refresh();
+    $coldStore->refresh();
+    $storeStock = $coldStore->stocks()->where('pomegranate_load_id', $load->id)->firstOrFail();
+
+    expect($batch->cold_store_id)->toBe($coldStore->id)
+        ->and($load->available_crates_count)->toBe(30)
+        ->and((float) $load->available_weight_kg)->toBe(600.0)
+        ->and($storeStock->crates_count)->toBe(30)
+        ->and((float) $storeStock->weight_kg)->toBe(600.0)
+        ->and($coldStore->current_crates_count)->toBe(30)
+        ->and((float) $coldStore->current_weight_kg)->toBe(600.0);
 });
 
 test('processing can build separate peeling and juice finished stock', function () {
