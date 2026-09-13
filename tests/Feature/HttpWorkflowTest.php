@@ -129,16 +129,8 @@ test('receiving and processing HTTP routes delegate to domain actions', function
     $response->assertRedirect('/dashboard');
 
     $load = PomegranateLoad::where('load_number', 'HTTP-LOAD-001')->firstOrFail();
-    $load->update([
-        'on_vehicle_crates_count' => 0,
-        'on_vehicle_weight_kg' => 0,
-        'available_crates_count' => 100,
-        'available_weight_kg' => 2000,
-        'status' => 'unloaded',
-    ]);
-
     $coldStore = ColdStore::create(['name' => 'HTTP Store', 'code' => 'HTTP-STORE']);
-    app(MoveLoadToColdStoreAction::class)->execute($load->fresh(), $coldStore, 100, 2000);
+    app(MoveLoadToColdStoreAction::class)->execute($load, $coldStore, 100, 2000);
 
     $response = $this->from('/dashboard')->actingAs($manager)->post("/processing/loads/{$load->id}", [
         'cold_store_id' => $coldStore->id,
