@@ -51,6 +51,13 @@ test('receiving and processing HTTP routes delegate to domain actions', function
     $response->assertRedirect('/dashboard');
 
     $load = PomegranateLoad::where('load_number', 'HTTP-LOAD-001')->firstOrFail();
+    $load->update([
+        'on_vehicle_crates_count' => 0,
+        'on_vehicle_weight_kg' => 0,
+        'available_crates_count' => 100,
+        'available_weight_kg' => 2000,
+        'status' => 'unloaded',
+    ]);
 
     $response = $this->from('/dashboard')->actingAs($manager)->post("/processing/loads/{$load->id}", [
         'process_type' => 'peeling',
