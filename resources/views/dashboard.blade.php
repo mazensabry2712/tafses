@@ -73,7 +73,10 @@
                         <a href="{{ route('receiving.index') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">الاستلام والشحنات</a>
                     @endcanPermission
                     @canPermission('manage_cold_stores')
-                        <a href="{{ route('warehouse') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">المخازن والعهد</a>
+                        <a href="{{ route('warehouse') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">المخازن والثلاجات</a>
+                    @endcanPermission
+                    @canPermission('manage_custody')
+                        <a href="{{ route('warehouse.custody') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">إدارة العُهد</a>
                     @endcanPermission
                     @canPermission('process_pomegranates')
                         <a href="{{ route('dashboard') }}#processing" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">التصنيع</a>
