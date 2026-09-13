@@ -23,19 +23,16 @@
                 <p class="mt-2 text-3xl font-bold">{{ number_format($report['receiving']['loads_count']) }}</p>
                 <p class="mt-1 text-sm text-gray-500">{{ number_format($report['receiving']['crates_count']) }} قفص</p>
             </div>
-
             <div class="rounded-2xl border bg-white p-5 shadow-sm">
                 <p class="text-sm text-gray-500">وزن الاستلام</p>
                 <p class="mt-2 text-3xl font-bold">{{ number_format($report['receiving']['weight_kg'], 1) }}</p>
                 <p class="mt-1 text-sm text-gray-500">كجم</p>
             </div>
-
             <div class="rounded-2xl border bg-white p-5 shadow-sm">
                 <p class="text-sm text-gray-500">إنتاج اليوم</p>
                 <p class="mt-2 text-3xl font-bold">{{ number_format($report['processing']['output_weight_kg'], 1) }}</p>
                 <p class="mt-1 text-sm text-gray-500">كجم منتج</p>
             </div>
-
             <div class="rounded-2xl border bg-white p-5 shadow-sm">
                 <p class="text-sm text-gray-500">مبيعات اليوم</p>
                 <p class="mt-2 text-3xl font-bold">{{ number_format($report['sales']['total_amount'], 2) }}</p>
@@ -54,29 +51,14 @@
                         <a href="{{ route('warehouse') }}" class="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50">إدارة المخازن</a>
                     @endcanPermission
                 </div>
-
                 <div class="mt-6 overflow-x-auto">
                     <table class="min-w-full text-right text-sm">
-                        <thead>
-                            <tr class="border-b text-gray-500">
-                                <th class="px-3 py-3 font-medium">المخزن</th>
-                                <th class="px-3 py-3 font-medium">الأقفاص</th>
-                                <th class="px-3 py-3 font-medium">الوزن</th>
-                                <th class="px-3 py-3 font-medium">العهدة</th>
-                            </tr>
-                        </thead>
+                        <thead><tr class="border-b text-gray-500"><th class="px-3 py-3 font-medium">المخزن</th><th class="px-3 py-3 font-medium">الأقفاص</th><th class="px-3 py-3 font-medium">الوزن</th><th class="px-3 py-3 font-medium">العهدة</th></tr></thead>
                         <tbody>
                             @forelse ($report['cold_stores'] as $store)
-                                <tr class="border-b last:border-0">
-                                    <td class="px-3 py-3 font-semibold">{{ $store['name'] }}</td>
-                                    <td class="px-3 py-3">{{ number_format($store['current_crates_count']) }}</td>
-                                    <td class="px-3 py-3">{{ number_format($store['current_weight_kg'], 1) }} كجم</td>
-                                    <td class="px-3 py-3">{{ number_format($store['custody_outstanding_crates']) }}</td>
-                                </tr>
+                                <tr class="border-b last:border-0"><td class="px-3 py-3 font-semibold">{{ $store['name'] }}</td><td class="px-3 py-3">{{ number_format($store['current_crates_count']) }}</td><td class="px-3 py-3">{{ number_format($store['current_weight_kg'], 1) }} كجم</td><td class="px-3 py-3">{{ number_format($store['custody_outstanding_crates']) }}</td></tr>
                             @empty
-                                <tr>
-                                    <td colspan="4" class="px-3 py-8 text-center text-gray-500">لا توجد مخازن مبردة نشطة حتى الآن.</td>
-                                </tr>
+                                <tr><td colspan="4" class="px-3 py-8 text-center text-gray-500">لا توجد مخازن مبردة نشطة حتى الآن.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -86,32 +68,25 @@
             <div class="rounded-2xl border bg-white p-6 shadow-sm">
                 <h2 class="text-lg font-bold">اختصارات النظام</h2>
                 <p class="mt-1 text-sm text-gray-500">الأقسام المسموح بها حسب صلاحياتك</p>
-
                 <div class="mt-5 space-y-2">
                     @canPermission('receive_loads')
-                        <a href="{{ route('receiving.loads.store') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">الاستلام والشحنات</a>
+                        <a href="{{ route('receiving.index') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">الاستلام والشحنات</a>
                     @endcanPermission
-
                     @canPermission('manage_cold_stores')
                         <a href="{{ route('warehouse') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">المخازن والعهد</a>
                     @endcanPermission
-
                     @canPermission('process_pomegranates')
                         <a href="{{ route('dashboard') }}#processing" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">التصنيع</a>
                     @endcanPermission
-
                     @canPermission('manage_sales')
                         <a href="{{ route('dashboard') }}#sales" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">المبيعات</a>
                     @endcanPermission
-
                     @canPermission('view_reports')
                         <a href="{{ route('reports.index') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">التقارير</a>
                     @endcanPermission
-
                     @canPermission('view_audit')
                         <a href="{{ route('audit.index') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">سجل التدقيق</a>
                     @endcanPermission
-
                     @canPermission('manage_users')
                         <a href="{{ route('management') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">إدارة المستخدمين</a>
                     @endcanPermission
@@ -120,35 +95,9 @@
         </section>
 
         <section class="grid gap-6 md:grid-cols-3">
-            <div id="processing" class="rounded-2xl border bg-white p-6 shadow-sm">
-                <h2 class="text-lg font-bold">التصنيع</h2>
-                <dl class="mt-4 space-y-3 text-sm">
-                    <div class="flex justify-between"><dt class="text-gray-500">دفعات التصنيع</dt><dd class="font-semibold">{{ number_format($report['processing']['batches_count']) }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-500">الداخل</dt><dd class="font-semibold">{{ number_format($report['processing']['input_weight_kg'], 1) }} كجم</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-500">الناتج</dt><dd class="font-semibold">{{ number_format($report['processing']['output_weight_kg'], 1) }} كجم</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-500">الهالك</dt><dd class="font-semibold">{{ number_format($report['processing']['waste_weight_kg'], 1) }} كجم</dd></div>
-                </dl>
-            </div>
-
-            <div id="sales" class="rounded-2xl border bg-white p-6 shadow-sm">
-                <h2 class="text-lg font-bold">الحسابات والمبيعات</h2>
-                <dl class="mt-4 space-y-3 text-sm">
-                    <div class="flex justify-between"><dt class="text-gray-500">عدد الفواتير</dt><dd class="font-semibold">{{ number_format($report['sales']['count']) }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-500">إجمالي المبيعات</dt><dd class="font-semibold">{{ number_format($report['sales']['total_amount'], 2) }} ج.م</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-500">المدفوع</dt><dd class="font-semibold">{{ number_format($report['sales']['paid_amount'], 2) }} ج.م</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-500">المتبقي</dt><dd class="font-semibold">{{ number_format($report['sales']['balance_due'], 2) }} ج.م</dd></div>
-                </dl>
-            </div>
-
-            <div class="rounded-2xl border bg-white p-6 shadow-sm">
-                <h2 class="text-lg font-bold">المشتريات والموردون</h2>
-                <dl class="mt-4 space-y-3 text-sm">
-                    <div class="flex justify-between"><dt class="text-gray-500">المشتريات</dt><dd class="font-semibold">{{ number_format($report['purchases']['count']) }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-500">إجمالي المشتريات</dt><dd class="font-semibold">{{ number_format($report['purchases']['total_amount'], 2) }} ج.م</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-500">المدفوع للموردين</dt><dd class="font-semibold">{{ number_format($report['purchases']['paid_amount'], 2) }} ج.م</dd></div>
-                    <div class="flex justify-between"><dt class="text-gray-500">مستحق للموردين</dt><dd class="font-semibold">{{ number_format($report['purchases']['balance_due'], 2) }} ج.م</dd></div>
-                </dl>
-            </div>
+            <div id="processing" class="rounded-2xl border bg-white p-6 shadow-sm"><h2 class="text-lg font-bold">التصنيع</h2><dl class="mt-4 space-y-3 text-sm"><div class="flex justify-between"><dt class="text-gray-500">دفعات التصنيع</dt><dd class="font-semibold">{{ number_format($report['processing']['batches_count']) }}</dd></div><div class="flex justify-between"><dt class="text-gray-500">الداخل</dt><dd class="font-semibold">{{ number_format($report['processing']['input_weight_kg'], 1) }} كجم</dd></div><div class="flex justify-between"><dt class="text-gray-500">الناتج</dt><dd class="font-semibold">{{ number_format($report['processing']['output_weight_kg'], 1) }} كجم</dd></div><div class="flex justify-between"><dt class="text-gray-500">الهالك</dt><dd class="font-semibold">{{ number_format($report['processing']['waste_weight_kg'], 1) }} كجم</dd></div></dl></div>
+            <div id="sales" class="rounded-2xl border bg-white p-6 shadow-sm"><h2 class="text-lg font-bold">الحسابات والمبيعات</h2><dl class="mt-4 space-y-3 text-sm"><div class="flex justify-between"><dt class="text-gray-500">عدد الفواتير</dt><dd class="font-semibold">{{ number_format($report['sales']['count']) }}</dd></div><div class="flex justify-between"><dt class="text-gray-500">إجمالي المبيعات</dt><dd class="font-semibold">{{ number_format($report['sales']['total_amount'], 2) }} ج.م</dd></div><div class="flex justify-between"><dt class="text-gray-500">المدفوع</dt><dd class="font-semibold">{{ number_format($report['sales']['paid_amount'], 2) }} ج.م</dd></div><div class="flex justify-between"><dt class="text-gray-500">المتبقي</dt><dd class="font-semibold">{{ number_format($report['sales']['balance_due'], 2) }} ج.م</dd></div></dl></div>
+            <div class="rounded-2xl border bg-white p-6 shadow-sm"><h2 class="text-lg font-bold">المشتريات والموردون</h2><dl class="mt-4 space-y-3 text-sm"><div class="flex justify-between"><dt class="text-gray-500">المشتريات</dt><dd class="font-semibold">{{ number_format($report['purchases']['count']) }}</dd></div><div class="flex justify-between"><dt class="text-gray-500">إجمالي المشتريات</dt><dd class="font-semibold">{{ number_format($report['purchases']['total_amount'], 2) }} ج.م</dd></div><div class="flex justify-between"><dt class="text-gray-500">المدفوع للموردين</dt><dd class="font-semibold">{{ number_format($report['purchases']['paid_amount'], 2) }} ج.م</dd></div><div class="flex justify-between"><dt class="text-gray-500">مستحق للموردين</dt><dd class="font-semibold">{{ number_format($report['purchases']['balance_due'], 2) }} ج.م</dd></div></dl></div>
         </section>
     </main>
 </x-layouts.app>
