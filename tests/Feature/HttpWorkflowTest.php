@@ -64,6 +64,23 @@ test('processing page is permission protected and renders for authorized users',
     $this->actingAs($storekeeper)->get('/processing')->assertOk()->assertViewIs('processing.index')->assertSee('تسجيل دفعة تصنيع');
 });
 
+test('sales page is permission protected and renders for sales users', function () {
+    $worker = httpUser('worker');
+    $accountant = httpUser('accountant');
+
+    $this->actingAs($worker)->get('/sales')->assertForbidden();
+    $this->actingAs($accountant)->get('/sales')->assertOk()->assertViewIs('sales.index')->assertSee('المبيعات والعملاء');
+});
+
+test('customer account page is permission protected and renders for customer managers', function () {
+    $customer = Customer::create(['name' => 'HTTP Customer']);
+    $worker = httpUser('worker');
+    $accountant = httpUser('accountant');
+
+    $this->actingAs($worker)->get("/sales/customers/{$customer->id}")->assertForbidden();
+    $this->actingAs($accountant)->get("/sales/customers/{$customer->id}")->assertOk()->assertViewIs('sales.customer')->assertSee('HTTP Customer');
+});
+
 test('receiving and processing HTTP routes delegate to domain actions', function () {
     $manager = httpUser('manager');
     $supplier = Supplier::create(['name' => 'HTTP Supplier']);
@@ -112,7 +129,7 @@ test('sales HTTP route reduces finished product stock', function () {
     ]);
     FinishedProductStock::create(['finished_product_id' => $product->id, 'quantity' => 500]);
 
-    $response = $this->from('/dashboard')->actingAs($accountant)->post("/sales/customers/{$customer->id}/invoices", [
+    $response = $this->from('/sales')->actingAs($accountant)->post("/sales/customers/{$customer->id}/invoices", [
         'invoice_number' => 'HTTP-INV-001',
         'items' => [[
             'finished_product_id' => $product->id,
@@ -122,6 +139,6 @@ test('sales HTTP route reduces finished product stock', function () {
         'paid_amount' => 1000,
     ]);
 
-    $response->assertRedirect('/dashboard');
+    $response->assertRedirect('/sales');
     expect((float) FinishedProductStock::where('finished_product_id', $product->id)->value('quantity'))->toBe(400.0);
 });
