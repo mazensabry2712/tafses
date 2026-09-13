@@ -35,6 +35,14 @@ test('reports are available to operational roles but not worker', function () {
     $this->actingAs($storekeeper)->get('/reports')->assertOk()->assertViewIs('reports.index');
 });
 
+test('receiving page is permission protected and renders for authorized users', function () {
+    $worker = httpUser('worker');
+    $storekeeper = httpUser('storekeeper');
+
+    $this->actingAs($worker)->get('/receiving')->assertForbidden();
+    $this->actingAs($storekeeper)->get('/receiving')->assertOk()->assertViewIs('receiving.index')->assertSee('استلام شحنة رمان');
+});
+
 test('receiving and processing HTTP routes delegate to domain actions', function () {
     $manager = httpUser('manager');
     $supplier = Supplier::create(['name' => 'HTTP Supplier']);
