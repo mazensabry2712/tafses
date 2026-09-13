@@ -47,6 +47,16 @@ class CreatePomegranatePurchaseAction
         }
 
         return DB::transaction(function () use ($load, $pricingUnit, $unitPrice, $quantity, $totalAmount, $initialPaid, $notes) {
+            $load = PomegranateLoad::query()->lockForUpdate()->findOrFail($load->id);
+
+            if ($load->supplier_id === null) {
+                throw new InvalidArgumentException('A supplier is required before creating a purchase.');
+            }
+
+            if (PomegranatePurchase::query()->where('pomegranate_load_id', $load->id)->exists()) {
+                throw new InvalidArgumentException('A purchase has already been recorded for this load.');
+            }
+
             $purchase = PomegranatePurchase::create([
                 'pomegranate_load_id' => $load->id,
                 'supplier_id' => $load->supplier_id,
