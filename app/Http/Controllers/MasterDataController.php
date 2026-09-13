@@ -13,6 +13,11 @@ use Illuminate\Http\Request;
 
 class MasterDataController extends Controller
 {
+    private function masterDataRedirect(): RedirectResponse
+    {
+        return redirect()->route('master-data');
+    }
+
     public function index()
     {
         return view('master-data.index', [
@@ -36,7 +41,7 @@ class MasterDataController extends Controller
 
         Vehicle::create($data);
 
-        return back()->with('success', 'تم إضافة المركبة بنجاح.');
+        return $this->masterDataRedirect()->with('success', 'تم إضافة المركبة بنجاح.');
     }
 
     public function storeColdStore(Request $request): RedirectResponse
@@ -55,14 +60,14 @@ class MasterDataController extends Controller
             'is_active' => true,
         ]);
 
-        return back()->with('success', 'تم إضافة البراد بنجاح.');
+        return $this->masterDataRedirect()->with('success', 'تم إضافة البراد بنجاح.');
     }
 
     public function closeColdStore(ColdStore $coldStore, CloseColdStoreAction $action): RedirectResponse
     {
         $action->execute($coldStore);
 
-        return back()->with('success', 'تم إغلاق البراد بعد تسوية المخزون والعُهد.');
+        return $this->masterDataRedirect()->with('success', 'تم إغلاق البراد بعد تسوية المخزون والعُهد.');
     }
 
     public function storeCustodian(Request $request): RedirectResponse
@@ -78,14 +83,14 @@ class MasterDataController extends Controller
             'is_active' => true,
         ]);
 
-        return back()->with('success', 'تم إضافة صاحب العهدة بنجاح.');
+        return $this->masterDataRedirect()->with('success', 'تم إضافة صاحب العهدة بنجاح.');
     }
 
     public function toggleCustodian(Custodian $custodian): RedirectResponse
     {
         $custodian->update(['is_active' => !$custodian->is_active]);
 
-        return back()->with('success', $custodian->is_active ? 'تم تفعيل صاحب العهدة.' : 'تم تعطيل صاحب العهدة.');
+        return $this->masterDataRedirect()->with('success', $custodian->is_active ? 'تم تفعيل صاحب العهدة.' : 'تم تعطيل صاحب العهدة.');
     }
 
     public function storeCrateStandard(Request $request): RedirectResponse
@@ -102,14 +107,14 @@ class MasterDataController extends Controller
             'is_active' => true,
         ]);
 
-        return back()->with('success', 'تم إضافة معيار القفص بنجاح.');
+        return $this->masterDataRedirect()->with('success', 'تم إضافة معيار القفص بنجاح.');
     }
 
     public function toggleCrateStandard(CrateStandard $crateStandard): RedirectResponse
     {
         $crateStandard->update(['is_active' => !$crateStandard->is_active]);
 
-        return back()->with('success', $crateStandard->is_active ? 'تم تفعيل معيار القفص.' : 'تم تعطيل معيار القفص.');
+        return $this->masterDataRedirect()->with('success', $crateStandard->is_active ? 'تم تفعيل معيار القفص.' : 'تم تعطيل معيار القفص.');
     }
 
     public function storeProduct(Request $request): RedirectResponse
@@ -126,13 +131,13 @@ class MasterDataController extends Controller
             'is_active' => true,
         ]);
 
-        return back()->with('success', 'تم إضافة المنتج النهائي بنجاح.');
+        return $this->masterDataRedirect()->with('success', 'تم إضافة المنتج النهائي بنجاح.');
     }
 
     public function toggleProduct(FinishedProduct $product): RedirectResponse
     {
         $product->update(['is_active' => !$product->is_active]);
 
-        return back()->with('success', $product->is_active ? 'تم تفعيل المنتج.' : 'تم تعطيل المنتج.');
+        return $this->masterDataRedirect()->with('success', $product->is_active ? 'تم تفعيل المنتج.' : 'تم تعطيل المنتج.');
     }
 }
