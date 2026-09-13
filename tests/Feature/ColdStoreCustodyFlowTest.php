@@ -151,17 +151,17 @@ test('returning all custody crates to the vehicle restores vehicle stock and kee
         'received_at' => now(),
         'loaded_crates_count' => 10,
         'loaded_weight_kg' => 200,
-        'on_vehicle_crates_count' => 0,
-        'on_vehicle_weight_kg' => 0,
+        'on_vehicle_crates_count' => 10,
+        'on_vehicle_weight_kg' => 200,
         'available_crates_count' => 0,
         'available_weight_kg' => 0,
         'status' => 'open',
     ]);
 
-    app(MoveLoadToColdStoreAction::class)->execute($load, $coldStore, 10, 200);
-    app(IssueCratesToCustodianAction::class)->execute($coldStore, $load, $custodian, 10, 200);
+    app(MoveLoadToColdStoreAction::class)->execute($load, $coldStore, 5, 100);
+    app(IssueCratesToCustodianAction::class)->execute($coldStore, $load, $custodian, 5, 100);
 
-    app(ReturnCustodyAction::class)->execute($coldStore, $load, $custodian, 10, 200, 'vehicle');
+    app(ReturnCustodyAction::class)->execute($coldStore, $load, $custodian, 5, 100, 'vehicle');
 
     $load->refresh();
 
