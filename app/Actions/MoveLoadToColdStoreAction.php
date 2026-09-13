@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\Models\ColdStore;
 use App\Models\ColdStoreStock;
+use App\Models\LoadCrateMovement;
 use App\Models\PomegranateLoad;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -54,6 +55,18 @@ class MoveLoadToColdStoreAction
             $coldStore->current_crates_count += $cratesCount;
             $coldStore->current_weight_kg = round((float) $coldStore->current_weight_kg + $weightKg, 3);
             $coldStore->save();
+
+            LoadCrateMovement::create([
+                'pomegranate_load_id' => $load->id,
+                'cold_store_id' => $coldStore->id,
+                'direction' => 'vehicle_to_facility',
+                'crates_count' => $cratesCount,
+                'weight_kg' => $weightKg,
+                'reason' => 'cold_store_receiving',
+                'moved_at' => now(),
+                'recorded_by' => $recordedBy,
+                'notes' => $notes,
+            ]);
 
             return $stock;
         });
