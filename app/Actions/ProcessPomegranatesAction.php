@@ -40,6 +40,8 @@ class ProcessPomegranatesAction
         return DB::transaction(function () use ($load, $processType, $inputCratesCount, $inputWeightKg, $outputWeightKg, $wasteWeightKg, $recordedBy, $notes, $coldStore) {
             $load = PomegranateLoad::query()->lockForUpdate()->findOrFail($load->id);
 
+            $coldStoreStock = null;
+
             if ($coldStore) {
                 $coldStore = ColdStore::query()->lockForUpdate()->findOrFail($coldStore->id);
 
@@ -84,7 +86,7 @@ class ProcessPomegranatesAction
             $load->available_weight_kg = round((float) $load->available_weight_kg - $inputWeightKg, 3);
             $load->save();
 
-            if ($coldStore) {
+            if ($coldStore && $coldStoreStock) {
                 $coldStoreStock->crates_count -= $inputCratesCount;
                 $coldStoreStock->weight_kg = round((float) $coldStoreStock->weight_kg - $inputWeightKg, 3);
                 $coldStoreStock->save();
@@ -95,7 +97,6 @@ class ProcessPomegranatesAction
             }
 
             $batch = $load->processingBatches()->create([
-                'cold_store_id' => $coldStore?->id,
                 'process_type' => $processType,
                 'input_crates_count' => $inputCratesCount,
                 'input_weight_kg' => $inputWeightKg,
@@ -105,6 +106,11 @@ class ProcessPomegranatesAction
                 'recorded_by' => $recordedBy,
                 'notes' => $notes,
             ]);
+
+            if ($coldStore) {
+                $batch->cold_store_id = $coldStore->id;
+                $batch->save();
+            }
 
             if ($outputWeightKg > 0) {
                 $stock = FinishedProductStock::query()
