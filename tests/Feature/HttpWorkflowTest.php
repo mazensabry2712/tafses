@@ -4,6 +4,7 @@ use App\Models\Customer;
 use App\Models\FinishedProduct;
 use App\Models\FinishedProductStock;
 use App\Models\PomegranateLoad;
+use App\Models\PomegranatePurchase;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -81,6 +82,16 @@ test('customer account page is permission protected and renders for customer man
     $this->actingAs($accountant)->get("/sales/customers/{$customer->id}")->assertOk()->assertViewIs('sales.customer')->assertSee('HTTP Customer');
 });
 
+test('supplier pages are permission protected and render for accountant', function () {
+    $supplier = Supplier::create(['name' => 'HTTP Supplier']);
+    $worker = httpUser('worker');
+    $accountant = httpUser('accountant');
+
+    $this->actingAs($worker)->get('/suppliers')->assertForbidden();
+    $this->actingAs($accountant)->get('/suppliers')->assertOk()->assertViewIs('suppliers.index')->assertSee('الموردون والمشتريات');
+    $this->actingAs($accountant)->get("/suppliers/{$supplier->id}")->assertOk()->assertViewIs('suppliers.show')->assertSee('HTTP Supplier');
+});
+
 test('receiving and processing HTTP routes delegate to domain actions', function () {
     $manager = httpUser('manager');
     $supplier = Supplier::create(['name' => 'HTTP Supplier']);
@@ -115,6 +126,45 @@ test('receiving and processing HTTP routes delegate to domain actions', function
 
     $response->assertRedirect('/dashboard');
     expect(FinishedProduct::where('code', 'peeling')->exists())->toBeTrue();
+});
+
+test('supplier purchase and payment HTTP routes update the supplier balance', function () {
+    $accountant = httpUser('accountant');
+    $supplier = Supplier::create(['name' => 'Purchase Supplier']);
+    $vehicle = Vehicle::create(['plate_number' => 'SUP-001', 'type' => 'Trailer']);
+    $load = PomegranateLoad::create([
+        'load_number' => 'PUR-LOAD-001',
+        'supplier_id' => $supplier->id,
+        'vehicle_id' => $vehicle->id,
+        'received_at' => now(),
+        'loaded_crates_count' => 100,
+        'loaded_weight_kg' => 2000,
+        'on_vehicle_crates_count' => 100,
+        'on_vehicle_weight_kg' => 2000,
+        'available_crates_count' => 0,
+        'available_weight_kg' => 0,
+        'status' => 'open',
+    ]);
+
+    $response = $this->from('/suppliers')->actingAs($accountant)->post("/suppliers/{$supplier->id}/purchases", [
+        'pomegranate_load_id' => $load->id,
+        'pricing_unit' => 'kg',
+        'unit_price' => 10,
+        'initial_paid' => 5000,
+    ]);
+
+    $response->assertRedirect('/suppliers');
+    $purchase = PomegranatePurchase::where('pomegranate_load_id', $load->id)->firstOrFail();
+    expect((float) $purchase->total_amount)->toBe(20000.0)
+        ->and((float) $purchase->paid_amount)->toBe(5000.0);
+
+    $response = $this->from('/suppliers/'. $supplier->id)->actingAs($accountant)->post("/suppliers/{$supplier->id}/purchases/{$purchase->id}/payments", [
+        'amount' => 15000,
+        'payment_method' => 'bank',
+    ]);
+
+    $response->assertRedirect('/suppliers/'. $supplier->id);
+    expect((float) PomegranatePurchase::findOrFail($purchase->id)->paid_amount)->toBe(20000.0);
 });
 
 test('sales HTTP route reduces finished product stock', function () {
