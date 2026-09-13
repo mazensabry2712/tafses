@@ -7,6 +7,7 @@ use App\Http\Controllers\ProcessingController;
 use App\Http\Controllers\ReceivingController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SalesController;
+use App\Http\Controllers\SuppliersController;
 use App\Http\Controllers\WarehouseController;
 use App\Support\Permissions;
 use Illuminate\Support\Facades\Route;
@@ -67,6 +68,26 @@ Route::middleware('auth')->group(function () {
     Route::post('/sales/customers/{customer}/invoices/{sale}/payments', [SalesController::class, 'payment'])
         ->middleware('permission:'.Permissions::MANAGE_PAYMENTS)
         ->name('sales.payment');
+
+    Route::get('/suppliers', [SuppliersController::class, 'index'])
+        ->middleware('permission:'.Permissions::MANAGE_SUPPLIERS)
+        ->name('suppliers.index');
+
+    Route::post('/suppliers', [SuppliersController::class, 'store'])
+        ->middleware('permission:'.Permissions::MANAGE_SUPPLIERS)
+        ->name('suppliers.store');
+
+    Route::get('/suppliers/{supplier}', [SuppliersController::class, 'show'])
+        ->middleware('permission:'.Permissions::MANAGE_SUPPLIERS)
+        ->name('suppliers.show');
+
+    Route::post('/suppliers/{supplier}/purchases', [SuppliersController::class, 'purchaseStore'])
+        ->middleware('permission:'.Permissions::MANAGE_SUPPLIERS)
+        ->name('suppliers.purchases.store');
+
+    Route::post('/suppliers/{supplier}/purchases/{purchase}/payments', [SuppliersController::class, 'paymentStore'])
+        ->middleware('permission:'.Permissions::MANAGE_PAYMENTS)
+        ->name('suppliers.purchases.payments.store');
 
     Route::post('/warehouse/loads/{load}/cold-store', [WarehouseController::class, 'moveToColdStore'])
         ->middleware('permission:'.Permissions::MANAGE_COLD_STORES)
