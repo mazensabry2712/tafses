@@ -1,6 +1,5 @@
 <?php
 
-use App\Actions\AuthenticateUserAction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -37,15 +36,15 @@ test('inactive users cannot log in', function () {
     $this->assertGuest();
 });
 
-test('role middleware protects management routes', function () {
+test('permission middleware protects management routes', function () {
     $worker = User::factory()->create(['role' => 'worker']);
-    $manager = User::factory()->create(['role' => 'manager']);
+    $admin = User::factory()->create(['role' => 'admin']);
 
     $this->actingAs($worker)->get('/management')->assertForbidden();
-    $this->actingAs($manager)->get('/management')->assertOk();
+    $this->actingAs($admin)->get('/management')->assertOk();
 });
 
-test('role middleware allows storekeeper access only to warehouse area', function () {
+test('permission middleware allows storekeeper access only to warehouse area', function () {
     $storekeeper = User::factory()->create(['role' => 'storekeeper']);
 
     $this->actingAs($storekeeper)->get('/warehouse')->assertOk();
