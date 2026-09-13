@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\Models\PomegranateLoad;
 use App\Models\PomegranatePurchase;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class CreatePomegranatePurchaseAction
@@ -16,6 +17,10 @@ class CreatePomegranatePurchaseAction
         ?float $initialPaid = null,
         ?string $notes = null,
     ): PomegranatePurchase {
+        if ($load->supplier_id === null) {
+            throw new InvalidArgumentException('A supplier is required before creating a purchase.');
+        }
+
         if (!in_array($pricingUnit, ['kg', 'crate', 'fixed'], true)) {
             throw new InvalidArgumentException('Pricing unit must be kg, crate, or fixed.');
         }
@@ -41,16 +46,30 @@ class CreatePomegranatePurchaseAction
             throw new InvalidArgumentException('Initial paid amount cannot exceed the purchase total.');
         }
 
-        return PomegranatePurchase::create([
-            'pomegranate_load_id' => $load->id,
-            'supplier_id' => $load->supplier_id,
-            'pricing_unit' => $pricingUnit,
-            'unit_price' => $unitPrice,
-            'quantity' => $quantity,
-            'total_amount' => $totalAmount,
-            'paid_amount' => $initialPaid,
-            'purchased_at' => $load->received_at->toDateString(),
-            'notes' => $notes,
-        ]);
+        return DB::transaction(function () use ($load, $pricingUnit, $unitPrice, $quantity, $totalAmount, $initialPaid, $notes) {
+            $purchase = PomegranatePurchase::create([
+                'pomegranate_load_id' => $load->id,
+                'supplier_id' => $load->supplier_id,
+                'pricing_unit' => $pricingUnit,
+                'unit_price' => $unitPrice,
+                'quantity' => $quantity,
+                'total_amount' => $totalAmount,
+                'paid_amount' => $initialPaid,
+                'purchased_at' => $load->received_at->toDateString(),
+                'notes' => $notes,
+            ]);
+
+            if ($initialPaid > 0) {
+                $purchase->payments()->create([
+                    'supplier_id' => $purchase->supplier_id,
+                    'amount' => $initialPaid,
+                    'paid_at' => now(),
+                    'payment_method' => 'cash',
+                    'notes' => 'Initial payment recorded with purchase.',
+                ]);
+            }
+
+            return $purchase;
+        });
     }
 }
