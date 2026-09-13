@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ColdStore;
 use App\Models\Customer;
 use App\Models\FinishedProduct;
 use App\Models\FinishedProductStock;
@@ -25,6 +26,19 @@ test('warehouse HTTP actions are permission protected', function () {
 
     $this->actingAs($worker)->get('/warehouse')->assertForbidden();
     $this->actingAs($manager)->get('/warehouse')->assertOk()->assertSee('المخازن والثلاجات');
+});
+
+test('custody management page is permission protected and renders for storekeeper', function () {
+    $worker = httpUser('worker');
+    $storekeeper = httpUser('storekeeper');
+
+    $this->actingAs($worker)->get('/warehouse/custody')->assertForbidden();
+
+    $this->actingAs($storekeeper)
+        ->get('/warehouse/custody')
+        ->assertOk()
+        ->assertViewIs('warehouse.custody')
+        ->assertSee('إدارة العُهد');
 });
 
 test('reports are available to operational roles but not worker', function () {
