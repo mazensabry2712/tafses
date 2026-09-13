@@ -1,11 +1,15 @@
 <?php
 
+use App\Actions\CreatePomegranateLoadAction;
+use App\Actions\GetPomegranateLoadSummaryAction;
 use App\Actions\ProcessPomegranatesAction;
 use App\Actions\RecordCrateMovementAction;
 use App\Models\PomegranateLoad;
 use App\Models\Supplier;
 use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use InvalidArgumentException;
+use RuntimeException;
 
 uses(RefreshDatabase::class);
 
@@ -28,6 +32,28 @@ function makeLoad(array $overrides = []): PomegranateLoad
         'status' => 'open',
     ], $overrides));
 }
+
+test('a pomegranate load starts fully on the vehicle', function () {
+    $supplier = Supplier::create(['name' => 'Farmer One']);
+    $vehicle = Vehicle::create(['plate_number' => 'AAA-111', 'type' => 'Truck']);
+
+    $load = app(CreatePomegranateLoadAction::class)->execute(
+        'LOAD-2026-0001',
+        $supplier->id,
+        $vehicle->id,
+        420,
+        8400,
+    );
+
+    expect($load->load_number)->toBe('LOAD-2026-0001')
+        ->and($load->loaded_crates_count)->toBe(420)
+        ->and((float) $load->loaded_weight_kg)->toBe(8400.0)
+        ->and($load->on_vehicle_crates_count)->toBe(420)
+        ->and((float) $load->on_vehicle_weight_kg)->toBe(8400.0)
+        ->and($load->available_crates_count)->toBe(0)
+        ->and((float) $load->available_weight_kg)->toBe(0.0)
+        ->and($load->status)->toBe('open');
+});
 
 test('crates can move from vehicle to facility and back with an audit record', function () {
     $load = makeLoad();
@@ -76,6 +102,31 @@ test('pomegranates can be processed for peeling and reduce available stock', fun
         ->and((float) $batch->waste_weight_kg)->toBe(50.0)
         ->and($load->available_crates_count)->toBe(80)
         ->and((float) $load->available_weight_kg)->toBe(1600.0);
+});
+
+test('a load summary reports peeling juice and waste outputs', function () {
+    $load = makeLoad([
+        'on_vehicle_crates_count' => 0,
+        'on_vehicle_weight_kg' => 0,
+        'available_crates_count' => 100,
+        'available_weight_kg' => 2000,
+        'status' => 'unloaded',
+    ]);
+
+    $processor = app(ProcessPomegranatesAction::class);
+    $processor->execute($load, 'peeling', 30, 600, 360, 90);
+    $processor->execute($load, 'juice', 20, 400, 280, 40);
+
+    $summary = app(GetPomegranateLoadSummaryAction::class)->execute($load->fresh());
+
+    expect($summary['loaded']['crates_count'])->toBe(100)
+        ->and($summary['available_for_processing']['crates_count'])->toBe(50)
+        ->and($summary['available_for_processing']['weight_kg'])->toBe(1000.0)
+        ->and($summary['processing']['input_crates_count'])->toBe(50)
+        ->and($summary['processing']['input_weight_kg'])->toBe(1000.0)
+        ->and($summary['processing']['peeling_output_weight_kg'])->toBe(360.0)
+        ->and($summary['processing']['juice_output_weight_kg'])->toBe(280.0)
+        ->and($summary['processing']['waste_weight_kg'])->toBe(130.0);
 });
 
 test('processing cannot consume more stock than is available', function () {
