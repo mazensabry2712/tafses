@@ -16,44 +16,50 @@ class MoveLoadToColdStoreAction
         PomegranateLoad $load,
         ColdStore $coldStore,
         int $cratesCount,
-        float $weightKg,
+        ?float $weightKg = null,
         ?int $recordedBy = null,
         ?string $notes = null,
     ): ColdStoreStock {
-        if ($cratesCount < 1 || $weightKg <= 0) {
-            throw new InvalidArgumentException('Crates count and weight must be positive.');
+        if ($cratesCount < 1) {
+            throw new InvalidArgumentException('Crates count must be positive.');
         }
 
         return DB::transaction(function () use ($load, $coldStore, $cratesCount, $weightKg, $recordedBy, $notes) {
             $load = PomegranateLoad::query()->lockForUpdate()->findOrFail($load->id);
-            $coldStore = ColdStore::query()->lockForUpdate()->findOrFail($coldStore->id);
+            $coldStore = ColdStore::query()->with('crateStandard')->lockForUpdate()->findOrFail($coldStore->id);
 
             if (!$coldStore->is_active) {
-                throw new RuntimeException('The cold store is inactive.');
+                throw new RuntimeException('The cold store is closed.');
             }
 
-            if ($cratesCount > $load->on_vehicle_crates_count || $weightKg > (float) $load->on_vehicle_weight_kg) {
+            $netWeightKg = $weightKg ?? $coldStore->netWeightFor($cratesCount);
+
+            if ($netWeightKg <= 0) {
+                throw new InvalidArgumentException('Weight must be positive.');
+            }
+
+            if ($cratesCount > $load->on_vehicle_crates_count || $netWeightKg > (float) $load->on_vehicle_weight_kg) {
                 throw new RuntimeException('Cannot move more than what remains on the vehicle.');
             }
 
             $load->on_vehicle_crates_count -= $cratesCount;
-            $load->on_vehicle_weight_kg = round((float) $load->on_vehicle_weight_kg - $weightKg, 3);
+            $load->on_vehicle_weight_kg = round((float) $load->on_vehicle_weight_kg - $netWeightKg, 3);
             $load->available_crates_count += $cratesCount;
-            $load->available_weight_kg = round((float) $load->available_weight_kg + $weightKg, 3);
+            $load->available_weight_kg = round((float) $load->available_weight_kg + $netWeightKg, 3);
             $load->refreshStatus();
             $load->save();
 
-            $stock = ColdStoreStock::query()->firstOrCreate(
+            $stock = ColdStoreStock::query()->lockForUpdate()->firstOrCreate(
                 ['cold_store_id' => $coldStore->id, 'pomegranate_load_id' => $load->id],
                 ['crates_count' => 0, 'weight_kg' => 0]
             );
 
             $stock->crates_count += $cratesCount;
-            $stock->weight_kg = round((float) $stock->weight_kg + $weightKg, 3);
+            $stock->weight_kg = round((float) $stock->weight_kg + $netWeightKg, 3);
             $stock->save();
 
             $coldStore->current_crates_count += $cratesCount;
-            $coldStore->current_weight_kg = round((float) $coldStore->current_weight_kg + $weightKg, 3);
+            $coldStore->current_weight_kg = round((float) $coldStore->current_weight_kg + $netWeightKg, 3);
             $coldStore->save();
 
             LoadCrateMovement::create([
@@ -61,7 +67,7 @@ class MoveLoadToColdStoreAction
                 'cold_store_id' => $coldStore->id,
                 'direction' => 'vehicle_to_facility',
                 'crates_count' => $cratesCount,
-                'weight_kg' => $weightKg,
+                'weight_kg' => $netWeightKg,
                 'reason' => 'cold_store_receiving',
                 'moved_at' => now(),
                 'recorded_by' => $recordedBy,
