@@ -5,6 +5,7 @@ namespace App\Support;
 class Permissions
 {
     public const MANAGE_USERS = 'manage_users';
+    public const MANAGE_MASTER_DATA = 'manage_master_data';
     public const RECEIVE_LOADS = 'receive_loads';
     public const MANAGE_COLD_STORES = 'manage_cold_stores';
     public const MANAGE_CUSTODY = 'manage_custody';
@@ -18,6 +19,7 @@ class Permissions
 
     public const ALL = [
         self::MANAGE_USERS,
+        self::MANAGE_MASTER_DATA,
         self::RECEIVE_LOADS,
         self::MANAGE_COLD_STORES,
         self::MANAGE_CUSTODY,
@@ -35,6 +37,7 @@ class Permissions
         return match ($role) {
             'admin' => self::ALL,
             'manager' => [
+                self::MANAGE_MASTER_DATA,
                 self::RECEIVE_LOADS,
                 self::MANAGE_COLD_STORES,
                 self::MANAGE_CUSTODY,
