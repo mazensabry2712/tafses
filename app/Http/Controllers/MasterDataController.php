@@ -39,11 +39,6 @@ class MasterDataController extends Controller
         return back()->with('success', 'تم إضافة المركبة بنجاح.');
     }
 
-    public function toggleVehicle(Vehicle $vehicle): RedirectResponse
-    {
-        return back()->withErrors(['vehicle' => 'المركبات الحالية لا تحتاج حالة تفعيل مستقلة؛ اترك السجل محفوظًا لاستخدام التاريخ.']);
-    }
-
     public function storeColdStore(Request $request): RedirectResponse
     {
         $data = $request->validate([
