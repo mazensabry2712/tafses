@@ -3,12 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Actions\CreatePomegranateLoadAction;
+use App\Models\Supplier;
+use App\Models\Vehicle;
 use Carbon\Carbon;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class ReceivingController extends Controller
 {
+    public function index(): View
+    {
+        return view('receiving.index', [
+            'suppliers' => Supplier::query()->where('is_active', true)->orderBy('name')->get(),
+            'vehicles' => Vehicle::query()->where('is_active', true)->orderBy('plate_number')->get(),
+        ]);
+    }
+
     public function store(Request $request, CreatePomegranateLoadAction $createLoad): RedirectResponse
     {
         $data = $request->validate([
@@ -31,6 +42,6 @@ class ReceivingController extends Controller
             $data['notes'] ?? null,
         );
 
-        return back()->with('success', 'Pomegranate load received successfully.');
+        return back()->with('success', 'تم تسجيل الشحنة بنجاح.');
     }
 }
