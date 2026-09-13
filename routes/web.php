@@ -44,7 +44,7 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:'.Permissions::MANAGE_CUSTODY)
         ->name('warehouse.custody.issue');
 
-    Route::post('/warehouse/{coldStore}/loads/{load}/custodians/{custodian}/return', [WarehouseController::class, 'return'])
+    Route::post('/warehouse/{coldStore}/loads/{load}/custodians/{custodian}/return', [WarehouseController::class, 'returnCustody'])
         ->middleware('permission:'.Permissions::MANAGE_CUSTODY)
         ->name('warehouse.custody.return');
 
