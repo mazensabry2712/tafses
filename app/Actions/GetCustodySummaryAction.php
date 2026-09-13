@@ -10,6 +10,8 @@ class GetCustodySummaryAction
 {
     public function execute(ColdStore $coldStore): array
     {
+        $coldStore->load('crateStandard');
+
         $aggregateRows = DB::table('custodians')
             ->join('custody_transactions', 'custodians.id', '=', 'custody_transactions.custodian_id')
             ->where('custody_transactions.cold_store_id', $coldStore->id)
@@ -58,6 +60,13 @@ class GetCustodySummaryAction
 
         return [
             'cold_store' => $coldStore->name,
+            'is_active' => $coldStore->is_active,
+            'crate_standard' => $coldStore->crateStandard ? [
+                'name' => $coldStore->crateStandard->name,
+                'gross_weight_kg' => (float) $coldStore->crateStandard->gross_weight_kg,
+                'tare_weight_kg' => (float) $coldStore->crateStandard->tare_weight_kg,
+                'net_weight_kg' => $coldStore->crateStandard->netWeightKg(),
+            ] : null,
             'current' => [
                 'crates_count' => $coldStore->current_crates_count,
                 'weight_kg' => (float) $coldStore->current_weight_kg,
