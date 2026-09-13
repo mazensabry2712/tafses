@@ -1,5 +1,7 @@
 <?php
 
+use App\Actions\MoveLoadToColdStoreAction;
+use App\Models\ColdStore;
 use App\Models\Customer;
 use App\Models\FinishedProduct;
 use App\Models\FinishedProductStock;
@@ -99,7 +101,7 @@ test('supplier pages are permission protected and render for accountant', functi
     $accountant = httpUser('accountant');
 
     $this->actingAs($worker)->get('/suppliers')->assertForbidden();
-    $this->actingAs($accountant)->get('/suppliers')->assertOk()->assertViewIs('suppliers.index')->assertSee('الموردون والمشتريات');
+    $this->actingAs($accountant)->get('/suppliers')->assertOk()->assertViewIs('suppliers.index')->assertSee('HTTP Supplier');
     $this->actingAs($accountant)->get("/suppliers/{$supplier->id}")->assertOk()->assertViewIs('suppliers.show')->assertSee('HTTP Supplier');
 });
 
@@ -135,7 +137,11 @@ test('receiving and processing HTTP routes delegate to domain actions', function
         'status' => 'unloaded',
     ]);
 
+    $coldStore = ColdStore::create(['name' => 'HTTP Store', 'code' => 'HTTP-STORE']);
+    app(MoveLoadToColdStoreAction::class)->execute($load->fresh(), $coldStore, 100, 2000);
+
     $response = $this->from('/dashboard')->actingAs($manager)->post("/processing/loads/{$load->id}", [
+        'cold_store_id' => $coldStore->id,
         'process_type' => 'peeling',
         'input_crates_count' => 20,
         'input_weight_kg' => 400,
@@ -144,7 +150,9 @@ test('receiving and processing HTTP routes delegate to domain actions', function
     ]);
 
     $response->assertRedirect('/dashboard');
-    expect(FinishedProduct::where('code', 'peeling')->exists())->toBeTrue();
+    expect(FinishedProduct::where('code', 'peeling')->exists())->toBeTrue()
+        ->and($coldStore->fresh()->current_crates_count)->toBe(80)
+        ->and((float) $coldStore->fresh()->current_weight_kg)->toBe(1600.0);
 });
 
 test('supplier purchase and payment HTTP routes update the supplier balance', function () {
