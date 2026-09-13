@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Permissions;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -26,5 +27,10 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function canPermission(string $permission): bool
+    {
+        return $this->is_active && in_array($permission, Permissions::forRole($this->role), true);
     }
 }
