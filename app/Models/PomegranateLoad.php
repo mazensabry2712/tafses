@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class PomegranateLoad extends Model
 {
@@ -32,7 +33,8 @@ class PomegranateLoad extends Model
     public function vehicle(): BelongsTo { return $this->belongsTo(Vehicle::class); }
     public function crateMovements(): HasMany { return $this->hasMany(LoadCrateMovement::class); }
     public function processingBatches(): HasMany { return $this->hasMany(ProcessingBatch::class); }
-    public function purchase(): \Illuminate\Database\Eloquent\Relations\HasOne { return $this->hasOne(PomegranatePurchase::class); }
+    public function coldStoreStocks(): HasMany { return $this->hasMany(ColdStoreStock::class); }
+    public function purchase(): HasOne { return $this->hasOne(PomegranatePurchase::class); }
 
     public function refreshStatus(): void
     {
