@@ -6,7 +6,7 @@
         </div>
 
         <section class="grid gap-4 md:grid-cols-3">
-            @foreach ($coldStores as $store)
+            @forelse ($coldStores as $store)
                 <div class="rounded-xl border bg-white p-5 shadow-sm">
                     <div class="flex items-start justify-between gap-4">
                         <div>
@@ -22,7 +22,7 @@
                         <div class="rounded-lg bg-gray-50 p-3"><dt class="text-gray-500">وزن صافي</dt><dd class="mt-1 text-lg font-bold">{{ number_format((float) $store->current_weight_kg, 3) }} كجم</dd></div>
                     </dl>
                     <p class="mt-3 text-xs text-gray-500">
-                        المعيار: {{ $store->crateStandard?->gross_weight_kg ?? '-' }} كجم إجمالي / {{ $store->crateStandard?->tare_weight_kg ?? '-' }} كجم فاقد القفص.
+                        المعيار: {{ $store->crateStandard?->gross_weight_kg ?? '-' }} كجم إجمالي / {{ $store->crateStandard?->tare_weight_kg ?? '-' }} كجم وزن القفص.
                     </p>
                     @if ($store->is_active)
                         <form method="POST" action="{{ route('warehouse.close', $store) }}" class="mt-4">
@@ -31,7 +31,9 @@
                         </form>
                     @endif
                 </div>
-            @endforeach
+            @empty
+                <div class="md:col-span-3 rounded-xl border bg-white px-4 py-8 text-center text-sm text-gray-500">لا توجد برادات مسجلة حاليًا.</div>
+            @endforelse
         </section>
 
         @canPermission('manage_cold_stores')
@@ -46,6 +48,7 @@
                     <div class="md:col-span-2">
                         <div class="font-medium">{{ $load->load_number }}</div>
                         <div class="text-xs text-gray-500">{{ $load->supplier?->name ?? 'بدون مورد' }} — {{ $load->vehicle?->plate_number ?? 'بدون سيارة' }}</div>
+                        <div class="mt-1 text-xs text-gray-500">على السيارة: {{ $load->on_vehicle_crates_count }} قفص / {{ number_format((float) $load->on_vehicle_weight_kg, 3) }} كجم</div>
                     </div>
                     <select name="cold_store_id" required class="rounded-lg border-gray-300">
                         <option value="">اختر البراد</option>
@@ -70,30 +73,31 @@
             <div class="rounded-xl border bg-white p-6 shadow-sm">
                 <h2 class="text-lg font-semibold">صرف عُهدة</h2>
                 <p class="mb-4 text-sm text-gray-500">الصرف يُسجل على نفس الشخص ويمكن تكراره عدة مرات.</p>
-                @foreach ($coldStores->where('is_active', true) as $store)
-                    @foreach ($store->stocks()->with('pomegranateLoad')->where('crates_count', '>', 0)->get() as $stock)
-                        <form method="POST" action="{{ route('warehouse.custody.issue', [$store, $stock->pomegranateLoad, $custodians->first()]) }}" class="mb-3 grid gap-2 md:grid-cols-4">
-                            @csrf
-                            <select name="custodian_id" required class="rounded-lg border-gray-300 md:col-span-2" onchange="this.form.action=this.form.action.replace(/custodians\/\\d+\/issue$/, 'custodians/' + this.value + '/issue')">
-                                @foreach ($custodians as $custodian)
-                                    <option value="{{ $custodian->id }}">{{ $custodian->name }}</option>
-                                @endforeach
-                            </select>
-                            <input name="crates_count" type="number" min="1" max="{{ $stock->crates_count }}" required placeholder="أقفاص" class="rounded-lg border-gray-300">
-                            <button class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white">صرف {{ $store->name }} / {{ $stock->pomegranateLoad->load_number }}</button>
-                            <input type="hidden" name="weight_kg" value="">
-                        </form>
+                @if ($custodians->isEmpty())
+                    <p class="text-sm text-gray-500">لا يوجد أمناء عهد نشطون مسجلون حاليًا.</p>
+                @else
+                    @foreach ($coldStores->where('is_active', true) as $store)
+                        @foreach ($store->stocks()->with('pomegranateLoad')->where('crates_count', '>', 0)->get() as $stock)
+                            <form method="POST" action="{{ route('warehouse.custody.issue', [$store, $stock->pomegranateLoad, 0]) }}" class="mb-3 grid gap-2 rounded-lg border p-3" data-custody-issue-form>
+                                @csrf
+                                <select name="custodian_id" required class="rounded-lg border-gray-300 md:col-span-2" data-custodian-select>
+                                    @foreach ($custodians as $custodian)
+                                        <option value="{{ $custodian->id }}">{{ $custodian->name }}</option>
+                                    @endforeach
+                                </select>
+                                <input name="crates_count" type="number" min="1" max="{{ $stock->crates_count }}" required placeholder="أقفاص" class="rounded-lg border-gray-300">
+                                <button class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white">صرف {{ $store->name }} / {{ $stock->pomegranateLoad->load_number }}</button>
+                                <input type="hidden" name="weight_kg" value="">
+                            </form>
+                        @endforeach
                     @endforeach
-                @endforeach
-                @if ($coldStores->every(fn ($store) => $store->stocks()->where('crates_count', '>', 0)->count() === 0))
-                    <p class="text-sm text-gray-500">لا يوجد مخزون متاح للصرف حاليًا.</p>
                 @endif
             </div>
 
             <div class="rounded-xl border bg-white p-6 shadow-sm">
                 <h2 class="text-lg font-semibold">إرجاع عُهدة</h2>
-                <p class="mb-4 text-sm text-gray-500">حدد الوجهة: السيارة أو نفس البراد.</p>
-                <p class="text-sm text-gray-500">يُستكمل نموذج الإرجاع التفصيلي من سجل العُهد في المرحلة التالية مع عرض الرصيد المفتوح لكل شخص.</p>
+                <p class="mb-4 text-sm text-gray-500">الإرجاع يدعم الوجهة إلى السيارة أو نفس البراد.</p>
+                <p class="text-sm text-gray-500">سيتم عرض سجل العُهد المفتوحة ونماذج الإرجاع المباشرة في خطوة العُهد التالية.</p>
             </div>
         </section>
         @endcanPermission
@@ -108,4 +112,15 @@
             </div>
         @endif
     </main>
+
+    <script>
+        document.querySelectorAll('[data-custody-issue-form]').forEach((form) => {
+            const select = form.querySelector('[data-custodian-select]');
+            const updateAction = () => {
+                form.action = form.action.replace(/custodians\/0\/issue$/, `custodians/${select.value}/issue`);
+            };
+            select.addEventListener('change', updateAction);
+            updateAction();
+        });
+    </script>
 </x-layouts.app>
