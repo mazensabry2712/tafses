@@ -138,7 +138,7 @@ test('a custodian cannot return more than the open custody', function () {
         ->toThrow(\RuntimeException::class);
 });
 
-test('a cold store cannot close while it has stock or outstanding custody', function () {
+test('a cold store cannot close while stock or custody is outstanding and can close after everything is settled', function () {
     $supplier = Supplier::create(['name' => 'Supplier Three']);
     $vehicle = Vehicle::create(['plate_number' => 'DDD-444', 'type' => 'Truck']);
     $coldStore = ColdStore::create(['name' => 'براد 4', 'code' => 'BR-4']);
@@ -169,8 +169,7 @@ test('a cold store cannot close while it has stock or outstanding custody', func
         ->toThrow(\RuntimeException::class);
 
     app(ReturnCustodyAction::class)->execute($coldStore, $load, $custodian, 10, 200, 'vehicle');
-    $coldStore->refresh();
+    $closed = app(CloseColdStoreAction::class)->execute($coldStore->fresh());
 
-    expect(fn () => app(CloseColdStoreAction::class)->execute($coldStore))
-        ->toThrow(\RuntimeException::class);
+    expect($closed->is_active)->toBeFalse();
 });
