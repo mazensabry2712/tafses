@@ -10,7 +10,12 @@ class Vehicle extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['plate_number', 'type', 'driver_name', 'driver_phone', 'notes'];
+    protected $fillable = ['plate_number', 'type', 'driver_name', 'driver_phone', 'is_active', 'notes'];
+
+    protected function casts(): array
+    {
+        return ['is_active' => 'boolean'];
+    }
 
     public function pomegranateLoads(): HasMany
     {
