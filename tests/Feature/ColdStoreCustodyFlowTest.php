@@ -138,6 +138,40 @@ test('a custodian cannot return more than the open custody', function () {
         ->toThrow(\RuntimeException::class);
 });
 
+test('returning all custody crates to the vehicle marks the load as unloaded', function () {
+    $supplier = Supplier::create(['name' => 'Supplier Four']);
+    $vehicle = Vehicle::create(['plate_number' => 'EEE-555', 'type' => 'Truck']);
+    $coldStore = ColdStore::create(['name' => 'براد 5', 'code' => 'BR-5']);
+    $custodian = Custodian::create(['name' => 'Mahmoud']);
+
+    $load = PomegranateLoad::create([
+        'load_number' => 'LOAD-CUSTODY-005',
+        'supplier_id' => $supplier->id,
+        'vehicle_id' => $vehicle->id,
+        'received_at' => now(),
+        'loaded_crates_count' => 10,
+        'loaded_weight_kg' => 200,
+        'on_vehicle_crates_count' => 0,
+        'on_vehicle_weight_kg' => 0,
+        'available_crates_count' => 0,
+        'available_weight_kg' => 0,
+        'status' => 'open',
+    ]);
+
+    app(MoveLoadToColdStoreAction::class)->execute($load, $coldStore, 10, 200);
+    app(IssueCratesToCustodianAction::class)->execute($coldStore, $load, $custodian, 10, 200);
+
+    expect($load->fresh()->status)->toBe('open');
+
+    app(ReturnCustodyAction::class)->execute($coldStore, $load, $custodian, 10, 200, 'vehicle');
+
+    $load->refresh();
+
+    expect($load->status)->toBe('unloaded')
+        ->and($load->on_vehicle_crates_count)->toBe(10)
+        ->and((float) $load->on_vehicle_weight_kg)->toBe(200.0);
+});
+
 test('a cold store cannot close while stock or custody is outstanding and can close after everything is settled', function () {
     $supplier = Supplier::create(['name' => 'Supplier Three']);
     $vehicle = Vehicle::create(['plate_number' => 'DDD-444', 'type' => 'Truck']);
