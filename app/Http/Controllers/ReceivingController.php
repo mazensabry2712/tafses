@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\CreatePomegranateLoadAction;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -26,7 +27,7 @@ class ReceivingController extends Controller
             $data['vehicle_id'] ?? null,
             (int) $data['crates_count'],
             (float) $data['weight_kg'],
-            isset($data['received_at']) ? now()->parse($data['received_at']) : null,
+            isset($data['received_at']) ? Carbon::parse($data['received_at']) : null,
             $data['notes'] ?? null,
         );
 
