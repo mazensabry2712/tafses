@@ -9,12 +9,16 @@ use Symfony\Component\HttpFoundation\Response;
 
 class AuditLogMiddleware
 {
-    public function handle(Request $request, Closure $next, AuditLogService $audit): Response
+    public function __construct(private AuditLogService $audit)
+    {
+    }
+
+    public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
 
         if ($request->user()) {
-            $audit->record($request, $response->getStatusCode());
+            $this->audit->record($request, $response->getStatusCode());
         }
 
         return $response;
