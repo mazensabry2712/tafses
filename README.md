@@ -1,7 +1,7 @@
 # Tafses
 
 ## Tafses backend
-Tafses is a Laravel system for a pomegranate peeling and juice business. The backend is being built first around the real physical and financial workflow: vehicle arrival, separate cold stores (`براد 1`, `براد 2`, etc.), open crate custody, processing, finished-product stock, sales, customer payments, supplier purchases, balances, and operational reporting.
+Tafses is a Laravel system for a pomegranate peeling and juice business. The backend is being built first around the real physical and financial workflow: vehicle arrival, separate cold stores (`براد 1`, `براد 2`, etc.), open crate custody, processing, finished-product stock, sales, customer payments, supplier purchases, balances, operational reporting, and controlled access.
 
 ## Physical flow
 ```text
@@ -26,24 +26,6 @@ Balances are tracked independently at every physical layer:
 5. A return can go back to the vehicle or back to the same cold store.
 6. Every issue/return is immutable history, so the system can answer who took what, when, how much was returned, and what is still outstanding.
 
-## Custody example
-A person can receive crates multiple times without closing the custody:
-
-```text
-Mahmoud
-  21
-  + 3
-  + 8
-  + 5
-  -----
-  37 issued
-
-Returned: 12
-Outstanding: 25
-```
-
-The outstanding balance is always `issued - returned`. A new issue simply adds to the same open custody balance.
-
 ## Crate weight standard
 Crate standards are stored centrally and can be assigned to each cold store. Example:
 
@@ -66,7 +48,7 @@ When a cold-store operation does not receive an explicit weight, the assigned cr
 - A cold store cannot be closed while it still has stock or custody crates outstanding.
 - Closed cold stores cannot receive new stock or issue new custody.
 - Stock-changing operations use database transactions and row locking.
-- Audit transactions are append-only; current balances are retained for fast operational queries.
+- Stock and settlement history is kept in append-only transaction ledgers.
 
 ## Processing and finished products
 Raw pomegranate available for processing can be processed into either:
@@ -78,46 +60,38 @@ Raw pomegranate available for processing can be processed into either:
 Each finished product has its own current stock and transaction ledger. Production increases finished stock; sales decrease finished stock.
 
 ## Sales and customer balances
-Finished products can be sold through invoices:
-
-```text
-Finished product stock
-        |
-        +--> Sale invoice
-        |      |
-        |      +--> sale items / quantity / unit price
-        |      +--> stock decreases
-        |      +--> customer debt increases
-        |
-        +--> customer payment
-               |
-               +--> invoice paid amount increases
-               +--> customer balance decreases
-```
+Finished products can be sold through invoices. A sale validates finished-product stock, creates invoice items, decreases stock, and records the sale movement in the finished-product ledger. Initial invoice payment and later customer payments are kept in the customer settlement ledger.
 
 Rules:
 - A sale must contain at least one finished-product item.
 - A sale cannot exceed the available finished-product stock.
-- Repeating the same product in one invoice is aggregated for stock validation so it cannot oversell the stock.
+- Repeating the same product in one invoice is aggregated before stock validation so it cannot oversell the stock.
 - Initial invoice payment is recorded in the customer payment ledger.
 - Later payments may be linked to a specific invoice and cannot exceed that invoice's remaining balance.
 - Invoice status is `unpaid`, `partial`, or `paid`.
 - Customer balance is `sales total - paid total`.
 
 ## Operational reports
-`GetOperationalReportAction` is a reusable reporting layer that accepts a `from` and `to` date/time and can therefore power daily, monthly, or custom-period reports without duplicating business logic.
+`GetOperationalReportAction` accepts a `from` and `to` date/time and can power daily, monthly, or custom-period reports without duplicating business logic.
 
-The report currently summarizes:
+The report currently summarizes receiving, purchases, supplier payments, processing/yield/waste, sales/customer balances, current finished-product stock, current active cold-store stock, and outstanding custody crates.
 
-- receiving: incoming loads, crates, and weight;
-- purchases: purchase count, total, paid, and remaining supplier balance for the period;
-- supplier payments: count and total paid;
-- processing: batches, input crates/weight, output, waste, plus peeling/juice breakdown;
-- sales: invoice count, total sales, paid amount, and customer balance generated in the period;
-- current finished-product stock;
-- current active cold-store stock and outstanding custody crates.
+## Authentication and permissions
+The system uses native Laravel authentication and a role-based permission map without adding an external authorization package.
 
-This keeps operational reporting separate from stock-changing actions while using the same persisted balances and ledgers as the source of truth.
+Roles:
+- `admin`: all permissions.
+- `manager`: operational management, finance, reports, and audit access.
+- `storekeeper`: receiving, cold stores, custody, processing, and reports.
+- `accountant`: suppliers, customers, sales, payments, and reports.
+- `worker`: processing only.
+
+Named permissions include `manage_users`, `receive_loads`, `manage_cold_stores`, `manage_custody`, `process_pomegranates`, `manage_suppliers`, `manage_customers`, `manage_sales`, `manage_payments`, `view_reports`, and `view_audit`.
+
+The `permission:` middleware is the web-level authorization gate, while `User::canPermission()` provides the same role map for application-level checks.
+
+## Audit log
+Authenticated web requests are written to `audit_logs` with the user, role, action, route, HTTP method, path, response status, IP address, user agent, and optional context. The `/audit` page is restricted to users with `view_audit` permission.
 
 ## Database concepts
 - `suppliers`: suppliers / farmers / traders.
@@ -139,6 +113,7 @@ This keeps operational reporting separate from stock-changing actions while usin
 - `customer_payments`: customer settlement ledger.
 - `pomegranate_purchases`: supplier purchase terms and amounts for incoming loads.
 - `supplier_payments`: supplier settlement ledger.
+- `audit_logs`: authenticated request activity and access history.
 
 ## Backend actions
 - `CreatePomegranateLoadAction`: creates an incoming load and initializes the vehicle balance.
@@ -154,10 +129,10 @@ This keeps operational reporting separate from stock-changing actions while usin
 - `RecordCustomerPaymentAction`: records a customer payment and updates the linked invoice status/balance.
 - `GetCustomerBalanceAction`: returns customer sales total, paid total, and balance due.
 - `GetOperationalReportAction`: builds daily/monthly/custom-period operational summaries.
-- `GetPomegranateLoadSummaryAction`: builds an operational summary for one load.
 - `CreatePomegranatePurchaseAction`: creates supplier purchase pricing tied to an incoming load.
 - `RecordSupplierPaymentAction`: records a supplier payment while protecting the remaining balance.
 - `GetSupplierBalanceAction`: returns purchase total, paid total, and balance due for a supplier.
+- `AuthenticateUserAction`: authenticates active users for the web application.
 
 ## Example vehicle flow
 A trailer arrives with 100 crates / 2,000 kg.
@@ -185,7 +160,7 @@ Vehicle: 100 crates / 2,000 kg
 4. Finished-product stock for peeling/juice ✅
 5. Finished-product sales, customers, and customer payments ✅
 6. Daily/monthly operational reports ✅
-7. Authentication, roles, permissions, and audit access
+7. Authentication, roles, granular permissions, and audit access ✅
 8. Blade frontend on top of the completed domain layer
 
 Domain actions are the source of truth for stock-changing and settlement operations. UI controllers should validate request shape and delegate business rules to these actions.
