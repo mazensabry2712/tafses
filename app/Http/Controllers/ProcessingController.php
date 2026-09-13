@@ -6,29 +6,54 @@ use App\Actions\ProcessPomegranatesAction;
 use App\Models\ColdStore;
 use App\Models\FinishedProduct;
 use App\Models\PomegranateLoad;
+use App\Models\ProcessingBatch;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class ProcessingController extends Controller
 {
-    public function index()
+    public function index(): View
     {
+        $loads = PomegranateLoad::query()
+            ->with([
+                'supplier',
+                'coldStoreStocks.coldStore' => fn ($query) => $query->where('is_active', true),
+            ])
+            ->where('available_crates_count', '>', 0)
+            ->where('available_weight_kg', '>', 0)
+            ->orderByDesc('received_at')
+            ->get();
+
+        $products = FinishedProduct::query()
+            ->with('stock')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $recentBatches = ProcessingBatch::query()
+            ->with(['pomegranateLoad', 'recorder'])
+            ->orderByDesc('processed_at')
+            ->orderByDesc('id')
+            ->limit(30)
+            ->get();
+
+        $processingSummary = [
+            'batches_count' => $recentBatches->count(),
+            'input_weight_kg' => (float) $recentBatches->sum(fn ($batch) => (float) $batch->input_weight_kg),
+            'output_weight_kg' => (float) $recentBatches->sum(fn ($batch) => (float) $batch->output_weight_kg),
+            'waste_weight_kg' => (float) $recentBatches->sum(fn ($batch) => (float) $batch->waste_weight_kg),
+        ];
+
         return view('processing.index', [
-            'loads' => PomegranateLoad::query()
-                ->with(['coldStoreStocks.coldStore' => fn ($query) => $query->where('is_active', true)])
-                ->where('available_crates_count', '>', 0)
-                ->where('available_weight_kg', '>', 0)
-                ->orderByDesc('received_at')
-                ->get(),
+            'loads' => $loads,
             'coldStores' => ColdStore::query()
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(),
-            'products' => FinishedProduct::query()
-                ->with('stock')
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get(),
+            'products' => $products->filter(fn (FinishedProduct $product) => (float) ($product->stock?->quantity ?? 0) > 0)->values(),
+            'recentBatches' => $recentBatches,
+            'processingSummary' => $processingSummary,
         ]);
     }
 
