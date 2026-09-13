@@ -52,6 +52,22 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:'.Permissions::PROCESS_POMEGRANATES)
         ->name('processing.store');
 
+    Route::get('/sales', [SalesController::class, 'index'])
+        ->middleware('permission:'.Permissions::MANAGE_SALES)
+        ->name('sales.index');
+
+    Route::get('/sales/customers/{customer}', [SalesController::class, 'customer'])
+        ->middleware('permission:'.Permissions::MANAGE_CUSTOMERS)
+        ->name('sales.customer');
+
+    Route::post('/sales/customers/{customer}/invoices', [SalesController::class, 'store'])
+        ->middleware('permission:'.Permissions::MANAGE_SALES)
+        ->name('sales.store');
+
+    Route::post('/sales/customers/{customer}/invoices/{sale}/payments', [SalesController::class, 'payment'])
+        ->middleware('permission:'.Permissions::MANAGE_PAYMENTS)
+        ->name('sales.payment');
+
     Route::post('/warehouse/loads/{load}/cold-store', [WarehouseController::class, 'moveToColdStore'])
         ->middleware('permission:'.Permissions::MANAGE_COLD_STORES)
         ->name('warehouse.loads.cold-store');
@@ -75,14 +91,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/accounting', fn () => 'Accounting area')
         ->middleware('permission:'.Permissions::MANAGE_PAYMENTS)
         ->name('accounting');
-
-    Route::post('/sales/customers/{customer}/invoices', [SalesController::class, 'store'])
-        ->middleware('permission:'.Permissions::MANAGE_SALES)
-        ->name('sales.store');
-
-    Route::post('/sales/customers/{customer}/invoices/{sale}/payments', [SalesController::class, 'payment'])
-        ->middleware('permission:'.Permissions::MANAGE_PAYMENTS)
-        ->name('sales.payment');
 
     Route::get('/audit', [AuditLogController::class, 'index'])
         ->middleware('permission:'.Permissions::VIEW_AUDIT)
