@@ -5,6 +5,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ManagementController;
+use App\Http\Controllers\MasterDataController;
 use App\Http\Controllers\ProcessingController;
 use App\Http\Controllers\ReceivingController;
 use App\Http\Controllers\ReportsController;
@@ -36,6 +37,37 @@ Route::middleware('auth')->group(function () {
     Route::post('/management/users/{user}/toggle', [ManagementController::class, 'toggleActive'])
         ->middleware('permission:'.Permissions::MANAGE_USERS)
         ->name('management.toggle');
+
+    Route::get('/master-data', [MasterDataController::class, 'index'])
+        ->middleware('permission:'.Permissions::MANAGE_MASTER_DATA)
+        ->name('master-data');
+    Route::post('/master-data/vehicles', [MasterDataController::class, 'storeVehicle'])
+        ->middleware('permission:'.Permissions::MANAGE_MASTER_DATA)
+        ->name('master-data.vehicles.store');
+    Route::post('/master-data/cold-stores', [MasterDataController::class, 'storeColdStore'])
+        ->middleware('permission:'.Permissions::MANAGE_MASTER_DATA)
+        ->name('master-data.cold-stores.store');
+    Route::post('/master-data/cold-stores/{coldStore}/close', [MasterDataController::class, 'closeColdStore'])
+        ->middleware('permission:'.Permissions::MANAGE_MASTER_DATA)
+        ->name('master-data.cold-stores.close');
+    Route::post('/master-data/custodians', [MasterDataController::class, 'storeCustodian'])
+        ->middleware('permission:'.Permissions::MANAGE_MASTER_DATA)
+        ->name('master-data.custodians.store');
+    Route::post('/master-data/custodians/{custodian}/toggle', [MasterDataController::class, 'toggleCustodian'])
+        ->middleware('permission:'.Permissions::MANAGE_MASTER_DATA)
+        ->name('master-data.custodians.toggle');
+    Route::post('/master-data/crate-standards', [MasterDataController::class, 'storeCrateStandard'])
+        ->middleware('permission:'.Permissions::MANAGE_MASTER_DATA)
+        ->name('master-data.crate-standards.store');
+    Route::post('/master-data/crate-standards/{crateStandard}/toggle', [MasterDataController::class, 'toggleCrateStandard'])
+        ->middleware('permission:'.Permissions::MANAGE_MASTER_DATA)
+        ->name('master-data.crate-standards.toggle');
+    Route::post('/master-data/products', [MasterDataController::class, 'storeProduct'])
+        ->middleware('permission:'.Permissions::MANAGE_MASTER_DATA)
+        ->name('master-data.products.store');
+    Route::post('/master-data/products/{product}/toggle', [MasterDataController::class, 'toggleProduct'])
+        ->middleware('permission:'.Permissions::MANAGE_MASTER_DATA)
+        ->name('master-data.products.toggle');
 
     Route::get('/warehouse', [WarehouseController::class, 'index'])
         ->middleware('permission:'.Permissions::MANAGE_COLD_STORES)
