@@ -70,7 +70,7 @@ A `PomegranateLoad` starts with all loaded crates and weight on the vehicle.
 For a load:
 - `loaded_*` = original received amount.
 - `on_vehicle_*` = current amount still on the vehicle.
-- `available_*` = current raw material available in facility/cold-store processing stock.
+- `available_*` = current raw material available for facility/cold-store processing.
 
 Vehicle-to-facility movement cannot exceed what remains on the vehicle.
 
@@ -88,7 +88,7 @@ Each cold store has:
 - active/closed state;
 - per-load stock records.
 
-A load can therefore exist in multiple cold stores, while each cold store still knows exactly how much of that load it owns.
+A load can exist in multiple cold stores, while each cold store still knows exactly how much of that load it owns.
 
 Closed cold stores cannot receive or issue stock.
 
@@ -168,6 +168,8 @@ The three physical aggregates are kept consistent in the same database transacti
 
 Each processing batch stores its `cold_store_id` so production history is traceable back to the physical source.
 
+The processing HTTP flow therefore requires a real active cold store containing the selected load. The UI exposes active cold stores and the action enforces the relation at domain level.
+
 Finished product stock has its own current balance and transaction ledger.
 
 ## 6. Sales and customers
@@ -230,8 +232,6 @@ The operational report summarizes:
 - finished-product stock;
 - current active cold-store stock;
 - outstanding custody crates.
-
-The report logic is centralized in an Action instead of duplicated across controllers/views.
 
 ## 9. Authentication, roles, and permissions
 
@@ -329,6 +329,8 @@ Main tables:
 - `customer_payments`
 - `audit_logs`
 
+`processing_batches` now includes `cold_store_id` to retain the physical source of each processing run.
+
 ## 14. Main domain Actions implemented
 
 - `CreatePomegranateLoadAction`
@@ -385,7 +387,7 @@ This is especially important for concurrent operations on:
 
 ## 17. Automated tests
 
-The repository currently contains Feature tests covering:
+The repository contains Feature tests covering:
 - authentication;
 - role/permission authorization;
 - audit logging;
@@ -399,13 +401,23 @@ The repository currently contains Feature tests covering:
 - management/accounting screens;
 - duplicate supplier purchase prevention.
 
-Latest user-confirmed local baseline before the newest processing consistency update:
+### Current user-confirmed local verification
+
+After pulling commit `86e8d2a`, the local project was verified with:
 
 ```text
-52 passed (236 assertions)
+53 passed (245 assertions)
+Duration: 2.16s
 ```
 
-The current `main` branch then received the subsequent processing consistency/audit updates. Those newest changes must be pulled and tested locally before treating the new code as locally verified.
+The following command also completed successfully with no pending migration at that point:
+
+```text
+php artisan migrate
+INFO  Nothing to migrate.
+```
+
+This is the current user-confirmed test baseline for the code present on the user's machine.
 
 ## 18. Recent production-audit findings and fixes
 
@@ -430,6 +442,9 @@ Fixes:
 - database unique index on `pomegranate_load_id`;
 - Action-level validation using `ValidationException` instead of exposing a raw DB error.
 
+Migration:
+`2026_09_13_140001_prevent_duplicate_purchases_per_load.php`
+
 ### Issue C — processing/cold-store stock divergence
 Problem:
 Processing originally reduced `PomegranateLoad.available_*` but did not reduce the corresponding cold-store stock aggregates.
@@ -441,12 +456,20 @@ Processing now accepts the selected cold store and atomically reduces:
 - the load available balance;
 - while recording `cold_store_id` on the processing batch.
 
-Regression tests were added for the domain and HTTP processing flows.
+The processing screen and controller were updated to require an active cold store selection, and regression coverage was added to both domain and HTTP tests.
+
+Migration:
+`2026_09_13_150001_add_cold_store_to_processing_batches_table.php`
 
 ### Issue D — incorrect custody regression test
 A temporary regression test assumed returning custody to the vehicle should mark the load `unloaded`. That assumption was incorrect because the stock had returned to the vehicle.
 
 The test was corrected to assert that the vehicle balance is restored and the load remains `open`.
+
+### Issue E — HTTP processing test state mismatch
+After processing was made dependent on a real cold-store stock record, the existing HTTP workflow test still constructed an impossible state (`available` stock with zero stock on vehicle) and then attempted another vehicle-to-cold-store move.
+
+The test setup was corrected to use the real flow: receive on vehicle -> move to cold store -> process from that cold store.
 
 ## 19. Git / delivery workflow
 
@@ -462,6 +485,8 @@ php artisan test
 ```
 
 Do not use `migrate:fresh` against a real data environment just to validate a normal migration.
+
+When `git pull` fails due to a temporary network/GitHub connection issue, do not assume code was updated locally; retry the pull and then re-run migration/tests after the exact commit is present.
 
 ## 20. Production-readiness checklist
 
@@ -517,14 +542,31 @@ Automated feature tests       ✅
 Final production hardening    🔄
 ```
 
+Current verified baseline:
+`53 passed (245 assertions)` on the user's local machine.
+
 The target is a working, traceable business platform first; cosmetic enhancements and non-blocking convenience features should not replace fixing real business-data integrity issues.
 
-## 22. Last audited commits
-
-Relevant recent commits on `main`:
+## 22. Important recent commits
 
 - `666f72c` — fix AccountingController route registration.
 - `11513dc` — added custody regression coverage, later corrected.
 - `5842353` — corrected custody regression test scenario.
 - `80e1c111` — processing/cold-store stock consistency audit update and related tests.
-- Current documentation commit: this file.
+- `fb9eaed` — added this project documentation file.
+- `86e8d2a` — corrected HTTP processing test setup after enforcing real cold-store processing flow.
+- `6cf7f408` — processing consistency implementation sequence included the cold-store-aware processing changes and migration.
+
+## 23. Working rule for future changes
+
+Do not weaken domain rules just to make a test pass.
+
+For every business-data change:
+1. identify the real physical/financial invariant;
+2. change the Domain Action first;
+3. update the controller/UI contract;
+4. add or update Feature tests;
+5. run the full suite;
+6. update this documentation when the workflow or business rules change.
+
+The repository's source of truth is the code plus this documentation file, with passing automated tests as the verification gate.
