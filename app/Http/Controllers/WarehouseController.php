@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Actions\CloseColdStoreAction;
+use App\Actions\GetCustodySummaryAction;
 use App\Actions\IssueCratesToCustodianAction;
 use App\Actions\MoveLoadToColdStoreAction;
 use App\Actions\ReturnCustodyAction;
 use App\Models\ColdStore;
 use App\Models\Custodian;
+use App\Models\CustodyTransaction;
 use App\Models\PomegranateLoad;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,6 +32,55 @@ class WarehouseController extends Controller
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(),
+        ]);
+    }
+
+    public function custody(GetCustodySummaryAction $summaryAction)
+    {
+        $coldStores = ColdStore::query()
+            ->with('crateStandard')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $summaries = $coldStores
+            ->mapWithKeys(fn (ColdStore $store) => [$store->id => $summaryAction->execute($store)])
+            ->all();
+
+        $openHoldings = CustodyTransaction::query()
+            ->with(['custodian:id,name', 'coldStore:id,name', 'pomegranateLoad:id,load_number'])
+            ->where('type', 'issue')
+            ->selectRaw('custodian_id, cold_store_id, pomegranate_load_id,
+                SUM(crates_count) AS issued_crates,
+                SUM(weight_kg) AS issued_weight_kg')
+            ->groupBy('custodian_id', 'cold_store_id', 'pomegranate_load_id')
+            ->get()
+            ->map(function (CustodyTransaction $row) {
+                $returned = CustodyTransaction::query()
+                    ->where('custodian_id', $row->custodian_id)
+                    ->where('cold_store_id', $row->cold_store_id)
+                    ->where('pomegranate_load_id', $row->pomegranate_load_id)
+                    ->whereIn('type', ['return_to_vehicle', 'return_to_store'])
+                    ->selectRaw('COALESCE(SUM(crates_count), 0) AS crates, COALESCE(SUM(weight_kg), 0) AS weight')
+                    ->first();
+
+                $crates = (int) $row->issued_crates - (int) ($returned?->crates ?? 0);
+                $weight = round((float) $row->issued_weight_kg - (float) ($returned?->weight ?? 0), 3);
+
+                return [
+                    'custodian' => $row->custodian,
+                    'cold_store' => $row->coldStore,
+                    'load' => $row->pomegranateLoad,
+                    'crates_count' => max(0, $crates),
+                    'weight_kg' => max(0, $weight),
+                ];
+            })
+            ->filter(fn (array $row) => $row['crates_count'] > 0 && $row['weight_kg'] > 0)
+            ->values();
+
+        return view('warehouse.custody', [
+            'summaries' => $summaries,
+            'openHoldings' => $openHoldings,
         ]);
     }
 
