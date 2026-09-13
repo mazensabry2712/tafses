@@ -32,6 +32,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:'.Permissions::MANAGE_COLD_STORES)
         ->name('warehouse');
 
+    Route::get('/warehouse/custody', [WarehouseController::class, 'custody'])
+        ->middleware('permission:'.Permissions::MANAGE_CUSTODY)
+        ->name('warehouse.custody');
+
     Route::get('/receiving', [ReceivingController::class, 'index'])
         ->middleware('permission:'.Permissions::RECEIVE_LOADS)
         ->name('receiving.index');
