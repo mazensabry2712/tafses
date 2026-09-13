@@ -1,15 +1,16 @@
 <?php
 
 use App\Actions\CreatePomegranateLoadAction;
+use App\Actions\CreatePomegranatePurchaseAction;
 use App\Actions\GetPomegranateLoadSummaryAction;
+use App\Actions\GetSupplierBalanceAction;
 use App\Actions\ProcessPomegranatesAction;
 use App\Actions\RecordCrateMovementAction;
+use App\Actions\RecordSupplierPaymentAction;
 use App\Models\PomegranateLoad;
 use App\Models\Supplier;
 use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use InvalidArgumentException;
-use RuntimeException;
 
 uses(RefreshDatabase::class);
 
@@ -127,6 +128,38 @@ test('a load summary reports peeling juice and waste outputs', function () {
         ->and($summary['processing']['peeling_output_weight_kg'])->toBe(360.0)
         ->and($summary['processing']['juice_output_weight_kg'])->toBe(280.0)
         ->and($summary['processing']['waste_weight_kg'])->toBe(130.0);
+});
+
+test('a load can be purchased by weight and the supplier balance decreases with payment', function () {
+    $load = makeLoad();
+
+    $purchase = app(CreatePomegranatePurchaseAction::class)->execute(
+        $load,
+        'kg',
+        15.5,
+        null,
+        10000,
+    );
+
+    expect((float) $purchase->total_amount)->toBe(31000.0)
+        ->and((float) $purchase->paid_amount)->toBe(10000.0)
+        ->and($purchase->balance())->toBe(21000.0);
+
+    app(RecordSupplierPaymentAction::class)->execute($purchase, 5000, 'cash');
+
+    $balance = app(GetSupplierBalanceAction::class)->execute($purchase->supplier->fresh());
+
+    expect($balance['purchase_total'])->toBe(31000.0)
+        ->and($balance['paid_total'])->toBe(15000.0)
+        ->and($balance['balance_due'])->toBe(16000.0);
+});
+
+test('a supplier payment cannot exceed the remaining purchase balance', function () {
+    $load = makeLoad();
+    $purchase = app(CreatePomegranatePurchaseAction::class)->execute($load, 'crate', 100, null, 0);
+
+    expect(fn () => app(RecordSupplierPaymentAction::class)->execute($purchase, 10100))
+        ->toThrow(InvalidArgumentException::class);
 });
 
 test('processing cannot consume more stock than is available', function () {
