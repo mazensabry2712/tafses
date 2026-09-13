@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\ProcessPomegranatesAction;
+use App\Models\ColdStore;
 use App\Models\FinishedProduct;
 use App\Models\PomegranateLoad;
 use Illuminate\Http\RedirectResponse;
@@ -14,9 +15,14 @@ class ProcessingController extends Controller
     {
         return view('processing.index', [
             'loads' => PomegranateLoad::query()
+                ->with(['coldStoreStocks.coldStore' => fn ($query) => $query->where('is_active', true)])
                 ->where('available_crates_count', '>', 0)
                 ->where('available_weight_kg', '>', 0)
                 ->orderByDesc('received_at')
+                ->get(),
+            'coldStores' => ColdStore::query()
+                ->where('is_active', true)
+                ->orderBy('name')
                 ->get(),
             'products' => FinishedProduct::query()
                 ->with('stock')
@@ -29,6 +35,7 @@ class ProcessingController extends Controller
     public function store(Request $request, PomegranateLoad $load, ProcessPomegranatesAction $action): RedirectResponse
     {
         $data = $request->validate([
+            'cold_store_id' => ['required', 'integer', 'exists:cold_stores,id'],
             'process_type' => ['required', 'in:peeling,juice'],
             'input_crates_count' => ['required', 'integer', 'min:1'],
             'input_weight_kg' => ['required', 'numeric', 'gt:0'],
@@ -36,6 +43,8 @@ class ProcessingController extends Controller
             'waste_weight_kg' => ['nullable', 'numeric', 'gte:0'],
             'notes' => ['nullable', 'string'],
         ]);
+
+        $coldStore = ColdStore::query()->findOrFail($data['cold_store_id']);
 
         $action->execute(
             $load,
@@ -46,6 +55,7 @@ class ProcessingController extends Controller
             (float) ($data['waste_weight_kg'] ?? 0),
             $request->user()->id,
             $data['notes'] ?? null,
+            $coldStore,
         );
 
         return back()->with('success', 'تم تسجيل دفعة التصنيع بنجاح.');
