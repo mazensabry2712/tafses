@@ -32,6 +32,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:'.Permissions::MANAGE_COLD_STORES)
         ->name('warehouse');
 
+    Route::get('/receiving', [ReceivingController::class, 'index'])
+        ->middleware('permission:'.Permissions::RECEIVE_LOADS)
+        ->name('receiving.index');
+
     Route::post('/receiving/loads', [ReceivingController::class, 'store'])
         ->middleware('permission:'.Permissions::RECEIVE_LOADS)
         ->name('receiving.loads.store');
