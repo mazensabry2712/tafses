@@ -1,93 +1,110 @@
 # Tafses
 
 ## Tafses backend
-Tafses is a Laravel system for a pomegranate peeling and juice business. The backend is being built first around the real operational and financial workflow: vehicle arrival, crate movement, stock inside the facility, processing, output, waste, supplier purchases, payments, and balances.
+Tafses is a Laravel system for a pomegranate peeling and juice business. The backend is being built first around the real physical and financial workflow: vehicle arrival, separate cold stores (`براد 1`, `براد 2`, etc.), open crate custody, processing, output, waste, supplier purchases, payments, and balances.
 
-## Operational flow
-1. Register the supplier/farmer/trader and transport vehicle.
-2. Create an incoming load with a unique load number, crate count, and total weight.
-3. The load initially keeps all crates/weight on the vehicle.
-4. Move crates from vehicle to facility as they are unloaded. Every move is stored as an audit record.
-5. Crates can be returned from the facility to the same vehicle when there is a return or correction.
-6. Process available pomegranate as **peeling** or **juice**.
-7. Each processing batch records input crates, input weight, output weight, waste, date, user, and notes.
-8. A load summary reports loaded quantity, vehicle remainder, available stock, and production by peeling/juice/waste.
-9. Create one purchase record for each incoming load when the supplier price is known.
-10. Purchase pricing can be **per kg**, **per crate**, or a **fixed total amount**.
-11. Supplier payments are recorded separately and can never exceed the remaining purchase balance.
-12. Supplier balances are calculated from purchase totals and recorded payments.
+## Physical flow
+```text
+Vehicle / trailer
+      |
+      +----> براد 1
+      |          |
+      |          +----> محمود: 21 + 3 + 8 + ...
+      |          |          |
+      |          |          +--> returned 12
+      |          |          +--> outstanding 25
+      |
+      +----> براد 2
+```
+
+Balances are tracked independently at every physical layer:
+
+1. The vehicle keeps its remaining crates/weight.
+2. Each cold store keeps its own current crates/weight.
+3. Each load inside each cold store is tracked separately.
+4. Each custodian has an open custody ledger. Repeated issues stay under the same person and remain open until returned.
+5. A return can go back to the vehicle or back to the same cold store.
+6. Every issue/return is immutable history, so the system can answer who took what, when, how much was returned, and what is still outstanding.
+
+## Custody example
+A person can receive crates multiple times without closing the custody:
+
+```text
+Mahmoud
+  21
+  + 3
+  + 8
+  + 5
+  -----
+  37 issued
+
+Returned: 12
+Outstanding: 25
+```
+
+The outstanding balance is always `issued - returned`. A new issue simply adds to the same open custody balance.
 
 ## Stock rules
-- A vehicle cannot unload more crates or weight than remains on that load's vehicle balance.
-- The facility cannot return more crates or weight than the load currently has available.
-- Processing cannot consume more crates or weight than the load currently has available.
-- Processing output + waste cannot exceed processing input weight.
+- Vehicle-to-cold-store cannot move more crates/weight than remains on the vehicle.
+- A cold store cannot issue more crates/weight for a specific load than its stock for that load.
+- A custodian cannot return more crates/weight than their current outstanding custody for that cold store and load.
+- Returning to the vehicle increases the vehicle balance and closes part of the person's open custody.
+- Returning to the cold store increases the cold-store balance and closes part of the person's open custody.
 - Stock-changing operations use database transactions and row locking.
-- Operational movement records are append-only audit records; current balances remain on the load for fast operational queries.
+- Audit transactions are append-only; current balances are retained for fast operational queries.
 
-## Financial rules
-- A purchase belongs to exactly one incoming pomegranate load.
-- The supplier is derived from the load to keep the purchase tied to the actual receiving event.
-- `kg` pricing defaults to the loaded weight.
-- `crate` pricing defaults to the loaded crate count.
-- `fixed` pricing uses quantity `1` and the supplied unit price as the total.
-- Initial payment may be recorded on purchase creation.
-- Later payments are separate records linked to the purchase and supplier.
-- A payment cannot exceed the purchase's remaining balance.
-- Supplier balance is never allowed to become negative.
-
-## Current database concepts
+## Database concepts
 - `suppliers`: suppliers / farmers / traders.
 - `vehicles`: trucks, trailers, and other transport vehicles.
-- `pomegranate_loads`: one incoming vehicle load with current on-vehicle and facility balances.
-- `load_crate_movements`: movement audit ledger between vehicle and facility.
-- `processing_batches`: peeling/juice processing records and yield.
+- `pomegranate_loads`: incoming vehicle loads and current vehicle/facility balances.
+- `load_crate_movements`: vehicle/facility movement audit ledger.
+- `cold_stores`: separate refrigerators/cold stores such as `براد 1` and `براد 2`.
+- `cold_store_stocks`: stock of each incoming load inside each cold store.
+- `custodians`: people who take crates from cold stores.
+- `custody_transactions`: every issue and return transaction for each custodian.
+- `processing_batches`: peeling/juice processing and yield.
 - `pomegranate_purchases`: supplier purchase terms and amounts for incoming loads.
-- `supplier_payments`: payment ledger for supplier settlements.
+- `supplier_payments`: supplier settlement ledger.
 
-## Current domain actions
-- `CreatePomegranateLoadAction`: records a new incoming load and initializes the vehicle balance.
-- `RecordCrateMovementAction`: moves crates/weight between the vehicle and facility with locking and validation.
+## Backend actions
+- `CreatePomegranateLoadAction`: creates an incoming load and initializes the vehicle balance.
+- `RecordCrateMovementAction`: moves crates/weight between vehicle and facility with locking and validation.
+- `MoveLoadToColdStoreAction`: moves crates/weight from a vehicle load into a selected cold store and maintains per-load cold-store stock.
+- `IssueCratesToCustodianAction`: issues crates from a cold store to a person and reduces cold-store/load stock.
+- `ReturnCustodyAction`: records a person's return and sends crates either to the vehicle or back to the cold store.
+- `GetCustodySummaryAction`: returns a cold-store snapshot plus each active person's issued, returned, and outstanding amounts.
 - `ProcessPomegranatesAction`: consumes available stock and records peeling/juice output and waste.
 - `GetPomegranateLoadSummaryAction`: builds an operational summary for one load.
 - `CreatePomegranatePurchaseAction`: creates supplier purchase pricing tied to an incoming load.
 - `RecordSupplierPaymentAction`: records a supplier payment while protecting the remaining balance.
 - `GetSupplierBalanceAction`: returns purchase total, paid total, and balance due for a supplier.
 
-## Example business flow
-A trailer arrives with 420 crates and 8,400 kg.
+## Example vehicle flow
+A trailer arrives with 100 crates / 2,000 kg.
 
 ```text
-Incoming load
-420 crates / 8,400 kg
+Vehicle: 100 crates / 2,000 kg
         |
-        +--> Unload 300 crates / 6,000 kg
+        +--> Move 40 crates / 800 kg to براد 1
         |        |
-        |        +--> Facility available: 300 crates / 6,000 kg
+        |        +--> براد 1: 40 crates / 800 kg
+        |                |
+        |                +--> Mahmoud takes 21
+        |                +--> Mahmoud takes 3
+        |                +--> Mahmoud takes 8
+        |                +--> Mahmoud returns 12 to vehicle
+        |                +--> Mahmoud takes 5 more
         |
-        +--> Vehicle remaining: 120 crates / 2,400 kg
-
-Facility processing
-300 crates / 6,000 kg
-        |
-        +--> Peeling output
-        +--> Juice output
-        +--> Waste
-
-Supplier settlement
-Load purchase total
-        |
-        +--> Initial payment
-        +--> Later payments
-        +--> Remaining supplier balance
+        +--> Vehicle remainder becomes 72 crates
 ```
 
 ## Backend-first roadmap
-1. Receiving, vehicle/load operations, and crate movement (complete foundation).
-2. Supplier purchases, prices, payments, and supplier balances (current).
-3. Finished-product stock and sales for peeling/juice.
-4. Daily/monthly reports and operational dashboards.
-5. Authentication, roles, permissions, and audit access.
-6. Blade frontend built on top of the completed domain layer.
+1. Receiving, vehicle/load operations, and base crate movement ✅
+2. Separate cold stores and open custodian custody ✅
+3. Supplier purchases, prices, payments, and supplier balances ✅
+4. Finished-product stock and sales for peeling/juice
+5. Daily/monthly reports and operational dashboards
+6. Authentication, roles, permissions, and audit access
+7. Blade frontend on top of the completed domain layer
 
-The domain actions are the source of truth for stock-changing and settlement operations. UI controllers should validate request shape and delegate business rules to these actions.
+Domain actions are the source of truth for stock-changing and settlement operations. UI controllers should validate request shape and delegate business rules to these actions.
