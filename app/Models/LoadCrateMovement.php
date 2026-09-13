@@ -11,7 +11,7 @@ class LoadCrateMovement extends Model
     use HasFactory;
 
     protected $fillable = [
-        'pomegranate_load_id', 'direction', 'crates_count', 'weight_kg',
+        'pomegranate_load_id', 'cold_store_id', 'direction', 'crates_count', 'weight_kg',
         'reason', 'moved_at', 'recorded_by', 'notes',
     ];
 
@@ -26,6 +26,11 @@ class LoadCrateMovement extends Model
     public function pomegranateLoad(): BelongsTo
     {
         return $this->belongsTo(PomegranateLoad::class, 'pomegranate_load_id');
+    }
+
+    public function coldStore(): BelongsTo
+    {
+        return $this->belongsTo(ColdStore::class);
     }
 
     public function recorder(): BelongsTo
