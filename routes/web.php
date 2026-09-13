@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Support\Permissions;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -17,15 +18,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    Route::middleware('role:admin,manager')->group(function () {
-        Route::get('/management', fn () => 'Management area')->name('management');
-    });
+    Route::get('/management', fn () => 'Management area')
+        ->middleware('permission:'.Permissions::MANAGE_USERS)
+        ->name('management');
 
-    Route::middleware('role:admin,manager,storekeeper')->group(function () {
-        Route::get('/warehouse', fn () => 'Warehouse area')->name('warehouse');
-    });
+    Route::get('/warehouse', fn () => 'Warehouse area')
+        ->middleware('permission:'.Permissions::MANAGE_COLD_STORES)
+        ->name('warehouse');
 
-    Route::middleware('role:admin,manager,accountant')->group(function () {
-        Route::get('/accounting', fn () => 'Accounting area')->name('accounting');
-    });
+    Route::get('/accounting', fn () => 'Accounting area')
+        ->middleware('permission:'.Permissions::MANAGE_PAYMENTS)
+        ->name('accounting');
 });
