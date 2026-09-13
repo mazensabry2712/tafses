@@ -1,141 +1,167 @@
-<x-layouts.app title="التصنيع">
-    <main dir="rtl" class="mx-auto max-w-7xl space-y-6 px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
+<x-layouts.app title="التفصيص والتصنيع">
+    <main dir="rtl" class="mx-auto w-full max-w-7xl space-y-6 px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
         <section class="overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-900 p-5 text-white shadow-xl sm:p-7">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                    <div class="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-emerald-100 ring-1 ring-white/10">التشغيل / التصنيع</div>
-                    <h1 class="mt-3 text-2xl font-black tracking-tight sm:text-3xl">التصنيع</h1>
-                    <p class="mt-2 max-w-3xl text-sm leading-6 text-emerald-50/80 sm:text-base">تحويل الرمان المتاح في البرادات إلى حبوب أو عصير مع تسجيل الناتج والهالك.</p>
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div class="max-w-3xl">
+                    <div class="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-emerald-100 ring-1 ring-white/10">قسم التفصيص</div>
+                    <h1 class="mt-3 text-2xl font-black tracking-tight sm:text-3xl lg:text-4xl">كل ما يخص التفصيص في صفحة واحدة</h1>
+                    <p class="mt-3 text-sm leading-7 text-emerald-50/80 sm:text-base">
+                        متابعة الرمان المتاح، اختيار البراد والحمولة، تسجيل الداخل والناتج والهالك، ثم مراجعة مخزون الحبوب وسجل دفعات التفصيص من نفس الشاشة.
+                    </p>
                 </div>
-            </div>
-        </section>
-
-        <section class="grid gap-4 sm:grid-cols-2">
-            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div class="flex items-center justify-between gap-3">
-                    <p class="text-sm font-bold text-slate-500">حمولات متاحة للتصنيع</p>
-                    <span class="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">متاح الآن</span>
+                <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
+                    <span class="font-bold text-white">سجل العمليات:</span> آخر {{ $recentBatches->count() }} دفعة
                 </div>
-                <p class="mt-3 text-3xl font-black text-slate-900">{{ $loads->count() }}</p>
-                <p class="mt-1 text-sm text-slate-500">حمولات بها مخزون متاح</p>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div class="flex items-center justify-between gap-3">
-                    <p class="text-sm font-bold text-slate-500">منتجات مصنعة</p>
-                    <span class="rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600">المخزون</span>
-                </div>
-                <p class="mt-3 text-3xl font-black text-slate-900">{{ $products->count() }}</p>
-                <p class="mt-1 text-sm text-slate-500">منتجات نشطة في المخزون</p>
-            </div>
-        </section>
-
-        <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-            <div class="border-b border-slate-100 px-4 py-5 sm:px-6">
-                <h2 class="text-xl font-black text-slate-900">تسجيل دفعة تصنيع</h2>
-                <p class="mt-1 text-sm leading-6 text-slate-500">اختر البراد الذي خرج منه الرمان، ثم سجل الكميات الفعلية.</p>
-            </div>
-
-            <div class="p-4 sm:p-6">
-                @forelse ($loads as $load)
-                    <form method="POST" action="{{ route('processing.store', $load) }}" class="mb-5 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 last:mb-0 sm:p-5">
-                        @csrf
-                        <div class="mb-4 flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <div class="text-base font-black text-slate-900">{{ $load->load_number }}</div>
-                                <div class="mt-1 text-xs leading-5 text-slate-500">إجمالي المتاح للحمولة: {{ $load->available_crates_count }} قفص — {{ number_format((float) $load->available_weight_kg, 3) }} كجم</div>
-                            </div>
-                            <span class="rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-600 ring-1 ring-slate-200">سجل دفعة جديدة</span>
-                        </div>
-
-                        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                            <div class="sm:col-span-2 lg:col-span-2">
-                                <label class="block text-sm font-bold text-slate-700">البراد</label>
-                                <select name="cold_store_id" required class="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10">
-                                    <option value="">اختر البراد</option>
-                                    @foreach ($load->coldStoreStocks->filter(fn ($stock) => $stock->coldStore && $stock->crates_count > 0 && (float) $stock->weight_kg > 0) as $coldStoreStock)
-                                        <option value="{{ $coldStoreStock->coldStore->id }}">{{ $coldStoreStock->coldStore->name }} — {{ $coldStoreStock->crates_count }} قفص / {{ number_format((float) $coldStoreStock->weight_kg, 3) }} كجم</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700">نوع التصنيع</label>
-                                <select name="process_type" required class="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10">
-                                    <option value="peeling">تقشير / حبوب</option>
-                                    <option value="juice">عصير</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700">أقفاص الداخل</label>
-                                <input name="input_crates_count" type="number" min="1" required placeholder="عدد الأقفاص" inputmode="numeric" class="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700">وزن الداخل</label>
-                                <input name="input_weight_kg" type="number" step="0.001" min="0.001" required placeholder="كجم" inputmode="decimal" class="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700">الناتج</label>
-                                <input name="output_weight_kg" type="number" step="0.001" min="0" required placeholder="كجم" inputmode="decimal" class="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700">الهالك</label>
-                                <input name="waste_weight_kg" type="number" step="0.001" min="0" placeholder="كجم" inputmode="decimal" class="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10">
-                            </div>
-                            <div class="sm:col-span-2 lg:col-span-2">
-                                <label class="block text-sm font-bold text-slate-700">ملاحظات</label>
-                                <input name="notes" type="text" placeholder="ملاحظات الدفعة (اختياري)" class="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10">
-                            </div>
-                        </div>
-
-                        <div class="mt-5 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
-                            <button class="min-h-12 w-full rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 sm:w-auto">تسجيل التصنيع</button>
-                        </div>
-                    </form>
-                @empty
-                    <div class="rounded-2xl bg-slate-50 px-5 py-10 text-center text-sm text-slate-500">لا توجد حمولات متاحة للتصنيع حاليًا.</div>
-                @endforelse
-            </div>
-        </section>
-
-        <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-            <div class="px-4 py-5 sm:px-6">
-                <h2 class="text-xl font-black text-slate-900">مخزون المنتجات النهائية</h2>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-[700px] w-full text-right text-sm">
-                    <thead class="bg-slate-50 text-slate-500">
-                        <tr>
-                            <th class="px-4 py-3 font-bold sm:px-6">المنتج</th>
-                            <th class="px-4 py-3 font-bold">النوع</th>
-                            <th class="px-4 py-3 font-bold">الكود</th>
-                            <th class="px-4 py-3 font-bold">المخزون</th>
-                            <th class="px-4 py-3 font-bold">الوحدة</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @forelse ($products as $product)
-                            <tr class="transition hover:bg-slate-50">
-                                <td class="px-4 py-4 font-bold text-slate-900 sm:px-6">{{ $product->name }}</td>
-                                <td class="px-4 py-4 text-slate-600">{{ $product->type === 'peeling' ? 'حبوب' : 'عصير' }}</td>
-                                <td class="px-4 py-4 text-slate-600">{{ $product->code }}</td>
-                                <td class="px-4 py-4 font-bold text-slate-900">{{ number_format((float) ($product->stock?->quantity ?? 0), 3) }}</td>
-                                <td class="px-4 py-4 text-slate-600">{{ $product->unit }}</td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="5" class="px-4 py-10 text-center text-slate-500">لا يوجد مخزون منتجات نهائية حتى الآن.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
             </div>
         </section>
 
         @if ($errors->any())
             <div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-800">
-                <ul class="list-disc space-y-1 pr-5">
+                <p class="font-black">راجع البيانات التالية:</p>
+                <ul class="mt-2 list-disc space-y-1 pr-5">
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
             </div>
         @endif
+
+        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p class="text-sm font-bold text-slate-500">حمولات متاحة</p>
+                <p class="mt-2 text-3xl font-black text-slate-900">{{ number_format($loads->count()) }}</p>
+                <p class="mt-2 text-xs text-slate-500">حمولة بها رصيد خام</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p class="text-sm font-bold text-slate-500">وزن الداخل</p>
+                <p class="mt-2 text-3xl font-black text-slate-900">{{ number_format($processingSummary['input_weight_kg'], 1) }}</p>
+                <p class="mt-2 text-xs text-slate-500">كجم — آخر 30 دفعة</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p class="text-sm font-bold text-slate-500">ناتج التفصيص</p>
+                <p class="mt-2 text-3xl font-black text-green-700">{{ number_format($processingSummary['output_weight_kg'], 1) }}</p>
+                <p class="mt-2 text-xs text-slate-500">كجم منتج</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p class="text-sm font-bold text-slate-500">الهالك</p>
+                <p class="mt-2 text-3xl font-black text-red-600">{{ number_format($processingSummary['waste_weight_kg'], 1) }}</p>
+                <p class="mt-2 text-xs text-slate-500">كجم</p>
+            </div>
+        </section>
+
+        <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div class="flex flex-col gap-2 border-b border-slate-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <h2 class="text-xl font-black text-slate-900">تشغيل التفصيص</h2>
+                    <p class="mt-1 text-sm leading-6 text-slate-500">سجل العملية كاملة من البراد إلى الناتج النهائي في نفس النموذج.</p>
+                </div>
+                <span class="rounded-full bg-green-50 px-3 py-1.5 text-xs font-black text-green-700">المخزون يتحدث تلقائيًا بعد التسجيل</span>
+            </div>
+
+            <div class="mt-5 space-y-4">
+                @forelse ($loads as $load)
+                    <form method="POST" action="{{ route('processing.store', $load) }}" class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+                        @csrf
+                        <div class="grid gap-4 xl:grid-cols-12">
+                            <div class="xl:col-span-3">
+                                <p class="text-xs font-bold text-slate-500">الحمولة</p>
+                                <p class="mt-1 text-base font-black text-slate-900">{{ $load->load_number }}</p>
+                                <p class="mt-1 text-xs text-slate-500">{{ $load->supplier?->name ?? 'بدون مورد' }}</p>
+                                <div class="mt-3 grid grid-cols-2 gap-2">
+                                    <div class="rounded-xl bg-white p-3 ring-1 ring-slate-100"><p class="text-[11px] text-slate-500">الأقفاص المتاحة</p><p class="mt-1 text-lg font-black">{{ $load->available_crates_count }}</p></div>
+                                    <div class="rounded-xl bg-white p-3 ring-1 ring-slate-100"><p class="text-[11px] text-slate-500">الوزن المتاح</p><p class="mt-1 text-lg font-black">{{ number_format((float) $load->available_weight_kg, 1) }}</p><p class="text-[11px] text-slate-500">كجم</p></div>
+                                </div>
+                            </div>
+
+                            <div class="xl:col-span-3">
+                                <label class="block text-sm font-bold text-slate-700">البراد *</label>
+                                <select name="cold_store_id" required class="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10">
+                                    <option value="">اختر البراد</option>
+                                    @foreach ($load->coldStoreStocks->filter(fn ($stock) => $stock->coldStore && $stock->coldStore->is_active && $stock->crates_count > 0 && (float) $stock->weight_kg > 0) as $coldStoreStock)
+                                        <option value="{{ $coldStoreStock->coldStore->id }}">{{ $coldStoreStock->coldStore->name }} — {{ $coldStoreStock->crates_count }} قفص / {{ number_format((float) $coldStoreStock->weight_kg, 3) }} كجم</option>
+                                    @endforeach
+                                </select>
+                                <label class="mt-4 block text-sm font-bold text-slate-700">نوع العملية *</label>
+                                <select name="process_type" required class="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10">
+                                    <option value="peeling">تفصيص / حبوب</option>
+                                    <option value="juice">عصير</option>
+                                </select>
+                            </div>
+
+                            <div class="xl:col-span-2">
+                                <label class="block text-sm font-bold text-slate-700">أقفاص الداخل *</label>
+                                <input name="input_crates_count" type="number" min="1" max="{{ $load->available_crates_count }}" required placeholder="عدد الأقفاص" inputmode="numeric" class="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10">
+                                <label class="mt-4 block text-sm font-bold text-slate-700">وزن الداخل *</label>
+                                <input name="input_weight_kg" type="number" step="0.001" min="0.001" max="{{ $load->available_weight_kg }}" required placeholder="كجم" inputmode="decimal" class="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10">
+                            </div>
+
+                            <div class="xl:col-span-2">
+                                <label class="block text-sm font-bold text-slate-700">الناتج *</label>
+                                <input name="output_weight_kg" type="number" step="0.001" min="0" required placeholder="كجم" inputmode="decimal" class="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10">
+                                <label class="mt-4 block text-sm font-bold text-slate-700">الهالك</label>
+                                <input name="waste_weight_kg" type="number" step="0.001" min="0" placeholder="كجم" inputmode="decimal" class="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10">
+                            </div>
+
+                            <div class="xl:col-span-2 flex flex-col justify-between gap-3">
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700">ملاحظات</label>
+                                    <input name="notes" type="text" placeholder="ملاحظات العملية (اختياري)" class="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10">
+                                </div>
+                                <button class="min-h-12 w-full rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-700/20 transition hover:bg-emerald-800">تسجيل عملية التفصيص</button>
+                            </div>
+                        </div>
+                    </form>
+                @empty
+                    <div class="rounded-2xl border border-dashed border-slate-300 px-5 py-12 text-center">
+                        <p class="font-black text-slate-800">لا يوجد رمان متاح للتفصيص</p>
+                        <p class="mt-2 text-sm text-slate-500">انقل الحمولة إلى براد مفتوح أولًا لتظهر هنا.</p>
+                    </div>
+                @endforelse
+            </div>
+        </section>
+
+        <section class="grid gap-6 xl:grid-cols-5">
+            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 xl:col-span-2">
+                <h2 class="text-xl font-black text-slate-900">مخزون ناتج التفصيص</h2>
+                <p class="mt-1 text-sm text-slate-500">المتاح حاليًا من المنتجات الناتجة عن التفصيص والتصنيع.</p>
+                <div class="mt-5 space-y-3">
+                    @forelse ($products as $product)
+                        <div class="rounded-2xl border border-slate-200 p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0"><p class="truncate font-black text-slate-900">{{ $product->name }}</p><p class="mt-1 text-xs text-slate-500">{{ $product->code }} · {{ $product->type === 'peeling' ? 'حبوب' : 'عصير' }}</p></div>
+                                <span class="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700">متاح</span>
+                            </div>
+                            <div class="mt-4 flex items-end justify-between"><div><p class="text-xs text-slate-500">الرصيد</p><p class="mt-1 text-2xl font-black">{{ number_format((float) ($product->stock?->quantity ?? 0), 3) }}</p></div><span class="text-sm font-bold text-slate-500">{{ $product->unit }}</span></div>
+                        </div>
+                    @empty
+                        <div class="rounded-2xl bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">لا يوجد مخزون ناتج حاليًا.</div>
+                    @endforelse
+                </div>
+            </div>
+
+            <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:col-span-3">
+                <div class="border-b border-slate-100 p-5 sm:p-6"><h2 class="text-xl font-black text-slate-900">سجل التفصيص</h2><p class="mt-1 text-sm text-slate-500">آخر 30 عملية: الحمولة، الداخل، الناتج، الهالك والمستخدم.</p></div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-[920px] w-full text-right text-sm">
+                        <thead class="bg-slate-50 text-slate-500"><tr><th class="whitespace-nowrap px-4 py-3">التاريخ</th><th class="whitespace-nowrap px-4 py-3">الحمولة</th><th class="whitespace-nowrap px-4 py-3">العملية</th><th class="whitespace-nowrap px-4 py-3">الداخل</th><th class="whitespace-nowrap px-4 py-3">الناتج</th><th class="whitespace-nowrap px-4 py-3">الهالك</th><th class="whitespace-nowrap px-4 py-3">المسجل</th></tr></thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @forelse ($recentBatches as $batch)
+                                <tr class="hover:bg-slate-50">
+                                    <td class="whitespace-nowrap px-4 py-3 text-slate-500">{{ optional($batch->processed_at)->format('Y-m-d H:i') }}</td>
+                                    <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $batch->pomegranateLoad?->load_number ?? '-' }}</td>
+                                    <td class="whitespace-nowrap px-4 py-3">{{ $batch->process_type === 'peeling' ? 'تفصيص / حبوب' : 'عصير' }}</td>
+                                    <td class="whitespace-nowrap px-4 py-3">{{ $batch->input_crates_count }} قفص / {{ number_format((float) $batch->input_weight_kg, 3) }} كجم</td>
+                                    <td class="whitespace-nowrap px-4 py-3 font-bold text-green-700">{{ number_format((float) $batch->output_weight_kg, 3) }} كجم</td>
+                                    <td class="whitespace-nowrap px-4 py-3 font-bold text-red-600">{{ number_format((float) $batch->waste_weight_kg, 3) }} كجم</td>
+                                    <td class="whitespace-nowrap px-4 py-3">{{ $batch->recorder?->name ?? '-' }}</td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="7" class="px-4 py-12 text-center text-sm text-slate-500">لا توجد عمليات تفصيص مسجلة حتى الآن.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
     </main>
 </x-layouts.app>
