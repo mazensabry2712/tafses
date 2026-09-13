@@ -24,7 +24,7 @@ test('warehouse HTTP actions are permission protected', function () {
     $manager = httpUser('manager');
 
     $this->actingAs($worker)->get('/warehouse')->assertForbidden();
-    $this->actingAs($manager)->get('/warehouse')->assertOk()->assertSee('Warehouse area');
+    $this->actingAs($manager)->get('/warehouse')->assertOk()->assertSee('المخازن والثلاجات');
 });
 
 test('reports are available to operational roles but not worker', function () {
