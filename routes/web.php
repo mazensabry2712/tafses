@@ -28,7 +28,7 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:'.Permissions::MANAGE_USERS)
         ->name('management');
 
-    Route::get('/warehouse', fn () => 'Warehouse area')
+    Route::get('/warehouse', [WarehouseController::class, 'index'])
         ->middleware('permission:'.Permissions::MANAGE_COLD_STORES)
         ->name('warehouse');
 
