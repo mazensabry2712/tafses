@@ -49,6 +49,17 @@ test('reports are available to operational roles but not worker', function () {
     $this->actingAs($storekeeper)->get('/reports')->assertOk()->assertViewIs('reports.index');
 });
 
+test('reports accept a custom date range', function () {
+    $manager = httpUser('manager');
+
+    $this->actingAs($manager)
+        ->get('/reports?from=2026-09-01&to=2026-09-07')
+        ->assertOk()
+        ->assertViewIs('reports.index')
+        ->assertSee('2026-09-01')
+        ->assertSee('2026-09-07');
+});
+
 test('receiving page is permission protected and renders for authorized users', function () {
     $worker = httpUser('worker');
     $storekeeper = httpUser('storekeeper');
@@ -90,6 +101,14 @@ test('supplier pages are permission protected and render for accountant', functi
     $this->actingAs($worker)->get('/suppliers')->assertForbidden();
     $this->actingAs($accountant)->get('/suppliers')->assertOk()->assertViewIs('suppliers.index')->assertSee('الموردون والمشتريات');
     $this->actingAs($accountant)->get("/suppliers/{$supplier->id}")->assertOk()->assertViewIs('suppliers.show')->assertSee('HTTP Supplier');
+});
+
+test('audit page is permission protected and renders for admin', function () {
+    $storekeeper = httpUser('storekeeper');
+    $admin = httpUser('admin');
+
+    $this->actingAs($storekeeper)->get('/audit')->assertForbidden();
+    $this->actingAs($admin)->get('/audit')->assertOk()->assertViewIs('audit.index')->assertSee('سجل التدقيق');
 });
 
 test('receiving and processing HTTP routes delegate to domain actions', function () {
