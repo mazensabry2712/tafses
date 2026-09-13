@@ -90,11 +90,24 @@ test('a sale cannot exceed finished product stock or invoice payment', function 
         'finished_product_id' => $product->id,
         'quantity' => 11,
         'unit_price' => 50,
-    ]], 'INV-0003'))->toThrow(RuntimeException::class);
+    ]], 'INV-0003'))->toThrow(\RuntimeException::class);
 
     expect(fn () => $action->execute($customer, [[
         'finished_product_id' => $product->id,
         'quantity' => 10,
         'unit_price' => 50,
-    ]], 'INV-0004', 501))->toThrow(InvalidArgumentException::class);
+    ]], 'INV-0004', 501))->toThrow(\InvalidArgumentException::class);
+});
+
+test('duplicate product lines cannot oversell finished stock', function () {
+    $customer = Customer::create(['name' => 'Customer Four']);
+    $product = makeFinishedProductStock(100);
+    $action = app(CreateFinishedProductSaleAction::class);
+
+    expect(fn () => $action->execute($customer, [
+        ['finished_product_id' => $product->id, 'quantity' => 60, 'unit_price' => 50],
+        ['finished_product_id' => $product->id, 'quantity' => 50, 'unit_price' => 50],
+    ], 'INV-0005'))->toThrow(\RuntimeException::class);
+
+    expect((float) FinishedProductStock::where('finished_product_id', $product->id)->value('quantity'))->toBe(100.0);
 });
