@@ -1,51 +1,26 @@
-<x-layouts.app>
-    <div class="p-6 space-y-6">
-        <div>
-            <h1 class="text-2xl font-semibold">Operational Report</h1>
-            <p class="text-sm text-gray-600">{{ $from }} to {{ $to }}</p>
-        </div>
-
-        <div class="grid gap-4 md:grid-cols-3">
-            <div class="rounded-lg border bg-white p-4">
-                <div class="text-sm text-gray-500">Received Loads</div>
-                <div class="mt-1 text-2xl font-semibold">{{ $summary['receiving']['loads_count'] }}</div>
-            </div>
-            <div class="rounded-lg border bg-white p-4">
-                <div class="text-sm text-gray-500">Sales</div>
-                <div class="mt-1 text-2xl font-semibold">{{ number_format($summary['sales']['total_amount'], 2) }}</div>
-            </div>
-            <div class="rounded-lg border bg-white p-4">
-                <div class="text-sm text-gray-500">Processing Output (kg)</div>
-                <div class="mt-1 text-2xl font-semibold">{{ number_format($summary['processing']['output_weight_kg'], 3) }}</div>
-            </div>
-        </div>
-
-        <div class="rounded-lg border bg-white p-4">
-            <h2 class="mb-3 font-semibold">Finished Product Stock</h2>
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
-                    <thead class="border-b">
-                        <tr>
-                            <th class="px-3 py-2 text-left">Product</th>
-                            <th class="px-3 py-2 text-left">Code</th>
-                            <th class="px-3 py-2 text-left">Quantity</th>
-                            <th class="px-3 py-2 text-left">Unit</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($summary['finished_product_stock'] as $product)
-                            <tr class="border-b last:border-0">
-                                <td class="px-3 py-2">{{ $product['name'] }}</td>
-                                <td class="px-3 py-2">{{ $product['code'] }}</td>
-                                <td class="px-3 py-2">{{ number_format($product['quantity'], 3) }}</td>
-                                <td class="px-3 py-2">{{ $product['unit'] }}</td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="4" class="px-3 py-4 text-center text-gray-500">No finished product stock.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+<x-layouts.app title="التقارير التشغيلية">
+    <main dir="rtl" class="mx-auto max-w-7xl space-y-6 px-6 py-8">
+        <section>
+            <h1 class="text-2xl font-bold">التقارير التشغيلية</h1>
+            <p class="mt-1 text-sm text-gray-600">تحليل الاستلام والمشتريات والتصنيع والمبيعات والمخزون للفترة المحددة.</p>
+        </section>
+        <form method="GET" action="{{ route('reports.index') }}" class="grid gap-4 rounded-2xl border bg-white p-5 shadow-sm md:grid-cols-3">
+            <label class="text-sm font-medium">من<input type="date" name="from" value="{{ $from }}" class="mt-1 block w-full rounded-lg border-gray-300"></label>
+            <label class="text-sm font-medium">إلى<input type="date" name="to" value="{{ $to }}" class="mt-1 block w-full rounded-lg border-gray-300"></label>
+            <div class="flex items-end"><button class="w-full rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-700">عرض التقرير</button></div>
+        </form>
+        <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="rounded-2xl border bg-white p-5 shadow-sm"><p class="text-sm text-gray-500">الشحنات</p><p class="mt-2 text-3xl font-bold">{{ number_format($summary['receiving']['loads_count']) }}</p><p class="mt-1 text-sm text-gray-500">{{ number_format($summary['receiving']['crates_count']) }} قفص</p></div>
+            <div class="rounded-2xl border bg-white p-5 shadow-sm"><p class="text-sm text-gray-500">إجمالي الاستلام</p><p class="mt-2 text-3xl font-bold">{{ number_format($summary['receiving']['weight_kg'], 1) }}</p><p class="mt-1 text-sm text-gray-500">كجم</p></div>
+            <div class="rounded-2xl border bg-white p-5 shadow-sm"><p class="text-sm text-gray-500">إنتاج التصنيع</p><p class="mt-2 text-3xl font-bold">{{ number_format($summary['processing']['output_weight_kg'], 1) }}</p><p class="mt-1 text-sm text-gray-500">كجم</p></div>
+            <div class="rounded-2xl border bg-white p-5 shadow-sm"><p class="text-sm text-gray-500">المبيعات</p><p class="mt-2 text-3xl font-bold">{{ number_format($summary['sales']['total_amount'], 2) }}</p><p class="mt-1 text-sm text-gray-500">ج.م</p></div>
+        </section>
+        <section class="grid gap-6 lg:grid-cols-2">
+            <div class="rounded-2xl border bg-white p-6 shadow-sm"><h2 class="text-lg font-bold">المشتريات والموردون</h2><dl class="mt-4 space-y-3 text-sm"><div class="flex justify-between"><dt class="text-gray-500">عدد المشتريات</dt><dd class="font-semibold">{{ number_format($summary['purchases']['count']) }}</dd></div><div class="flex justify-between"><dt class="text-gray-500">إجمالي المشتريات</dt><dd class="font-semibold">{{ number_format($summary['purchases']['total_amount'], 2) }} ج.م</dd></div><div class="flex justify-between"><dt class="text-gray-500">المدفوع</dt><dd class="font-semibold">{{ number_format($summary['purchases']['paid_amount'], 2) }} ج.م</dd></div><div class="flex justify-between"><dt class="text-gray-500">المستحق</dt><dd class="font-semibold">{{ number_format($summary['purchases']['balance_due'], 2) }} ج.م</dd></div></dl></div>
+            <div class="rounded-2xl border bg-white p-6 shadow-sm"><h2 class="text-lg font-bold">التصنيع</h2><dl class="mt-4 space-y-3 text-sm"><div class="flex justify-between"><dt class="text-gray-500">دفعات التصنيع</dt><dd class="font-semibold">{{ number_format($summary['processing']['batches_count']) }}</dd></div><div class="flex justify-between"><dt class="text-gray-500">الداخل</dt><dd class="font-semibold">{{ number_format($summary['processing']['input_weight_kg'], 1) }} كجم</dd></div><div class="flex justify-between"><dt class="text-gray-500">الناتج</dt><dd class="font-semibold">{{ number_format($summary['processing']['output_weight_kg'], 1) }} كجم</dd></div><div class="flex justify-between"><dt class="text-gray-500">الهالك</dt><dd class="font-semibold">{{ number_format($summary['processing']['waste_weight_kg'], 1) }} كجم</dd></div></dl></div>
+        </section>
+        <section class="rounded-2xl border bg-white p-6 shadow-sm"><h2 class="text-lg font-bold">المخزون النهائي</h2><div class="mt-4 overflow-x-auto"><table class="min-w-full text-right text-sm"><thead><tr class="border-b text-gray-500"><th class="px-3 py-3 font-medium">المنتج</th><th class="px-3 py-3 font-medium">الكود</th><th class="px-3 py-3 font-medium">النوع</th><th class="px-3 py-3 font-medium">الرصيد</th><th class="px-3 py-3 font-medium">الوحدة</th></tr></thead><tbody>@forelse ($summary['finished_product_stock'] as $product)<tr class="border-b last:border-0"><td class="px-3 py-3 font-semibold">{{ $product['name'] }}</td><td class="px-3 py-3">{{ $product['code'] }}</td><td class="px-3 py-3">{{ $product['type'] }}</td><td class="px-3 py-3">{{ number_format($product['quantity'], 3) }}</td><td class="px-3 py-3">{{ $product['unit'] }}</td></tr>@empty<tr><td colspan="5" class="px-3 py-8 text-center text-gray-500">لا يوجد مخزون منتج نهائي.</td></tr>@endforelse</tbody></table></div></section>
+        <section class="rounded-2xl border bg-white p-6 shadow-sm"><h2 class="text-lg font-bold">المخازن المبردة</h2><div class="mt-4 overflow-x-auto"><table class="min-w-full text-right text-sm"><thead><tr class="border-b text-gray-500"><th class="px-3 py-3 font-medium">البراد</th><th class="px-3 py-3 font-medium">الأقفاص</th><th class="px-3 py-3 font-medium">الوزن</th><th class="px-3 py-3 font-medium">عهدة مفتوحة</th></tr></thead><tbody>@forelse ($summary['cold_stores'] as $store)<tr class="border-b last:border-0"><td class="px-3 py-3 font-semibold">{{ $store['name'] }}</td><td class="px-3 py-3">{{ number_format($store['current_crates_count']) }}</td><td class="px-3 py-3">{{ number_format($store['current_weight_kg'], 1) }} كجم</td><td class="px-3 py-3">{{ number_format($store['custody_outstanding_crates']) }}</td></tr>@empty<tr><td colspan="4" class="px-3 py-8 text-center text-gray-500">لا توجد مخازن نشطة.</td></tr>@endforelse</tbody></table></div></section>
+        <section class="rounded-2xl border bg-white p-6 shadow-sm"><h2 class="text-lg font-bold">المبيعات والتحصيل</h2><dl class="mt-4 grid gap-4 text-sm sm:grid-cols-3"><div class="rounded-xl bg-gray-50 p-4"><dt class="text-gray-500">عدد الفواتير</dt><dd class="mt-1 text-xl font-bold">{{ number_format($summary['sales']['count']) }}</dd></div><div class="rounded-xl bg-gray-50 p-4"><dt class="text-gray-500">المدفوع</dt><dd class="mt-1 text-xl font-bold">{{ number_format($summary['sales']['paid_amount'], 2) }} ج.م</dd></div><div class="rounded-xl bg-gray-50 p-4"><dt class="text-gray-500">المتبقي</dt><dd class="mt-1 text-xl font-bold">{{ number_format($summary['sales']['balance_due'], 2) }} ج.م</dd></div></dl></section>
+    </main>
 </x-layouts.app>
