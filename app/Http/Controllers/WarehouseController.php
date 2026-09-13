@@ -14,6 +14,25 @@ use Illuminate\Http\Request;
 
 class WarehouseController extends Controller
 {
+    public function index()
+    {
+        return view('warehouse.index', [
+            'coldStores' => ColdStore::query()
+                ->with('crateStandard')
+                ->orderBy('name')
+                ->get(),
+            'loads' => PomegranateLoad::query()
+                ->with(['supplier', 'vehicle'])
+                ->where('on_vehicle_crates_count', '>', 0)
+                ->orderByDesc('received_at')
+                ->get(),
+            'custodians' => Custodian::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(),
+        ]);
+    }
+
     public function moveToColdStore(Request $request, PomegranateLoad $load, MoveLoadToColdStoreAction $action): RedirectResponse
     {
         $data = $request->validate([
@@ -32,7 +51,7 @@ class WarehouseController extends Controller
             $data['notes'] ?? null,
         );
 
-        return back()->with('success', 'Load moved to cold store successfully.');
+        return back()->with('success', 'تم نقل الحمولة إلى البراد بنجاح.');
     }
 
     public function issue(Request $request, ColdStore $coldStore, PomegranateLoad $load, Custodian $custodian, IssueCratesToCustodianAction $action): RedirectResponse
@@ -53,7 +72,7 @@ class WarehouseController extends Controller
             $data['notes'] ?? null,
         );
 
-        return back()->with('success', 'Custody issue recorded successfully.');
+        return back()->with('success', 'تم تسجيل صرف العُهدة بنجاح.');
     }
 
     public function returnCustody(Request $request, ColdStore $coldStore, PomegranateLoad $load, Custodian $custodian, ReturnCustodyAction $action): RedirectResponse
@@ -76,13 +95,13 @@ class WarehouseController extends Controller
             $data['notes'] ?? null,
         );
 
-        return back()->with('success', 'Custody return recorded successfully.');
+        return back()->with('success', 'تم تسجيل إرجاع العُهدة بنجاح.');
     }
 
     public function close(ColdStore $coldStore, CloseColdStoreAction $action): RedirectResponse
     {
         $action->execute($coldStore);
 
-        return back()->with('success', 'Cold store closed successfully.');
+        return back()->with('success', 'تم إغلاق البراد بنجاح.');
     }
 }
