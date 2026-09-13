@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\ColdStore;
 use App\Models\Customer;
 use App\Models\FinishedProduct;
 use App\Models\FinishedProductStock;
@@ -55,6 +54,14 @@ test('receiving page is permission protected and renders for authorized users', 
 
     $this->actingAs($worker)->get('/receiving')->assertForbidden();
     $this->actingAs($storekeeper)->get('/receiving')->assertOk()->assertViewIs('receiving.index')->assertSee('استلام شحنة رمان');
+});
+
+test('processing page is permission protected and renders for authorized users', function () {
+    $accountant = httpUser('accountant');
+    $storekeeper = httpUser('storekeeper');
+
+    $this->actingAs($accountant)->get('/processing')->assertForbidden();
+    $this->actingAs($storekeeper)->get('/processing')->assertOk()->assertViewIs('processing.index')->assertSee('تسجيل دفعة تصنيع');
 });
 
 test('receiving and processing HTTP routes delegate to domain actions', function () {
