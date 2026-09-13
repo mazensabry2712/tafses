@@ -2,6 +2,8 @@
 
 namespace App\Actions;
 
+use App\Models\FinishedProduct;
+use App\Models\FinishedProductStock;
 use App\Models\PomegranateLoad;
 use App\Models\ProcessingBatch;
 use Illuminate\Support\Facades\DB;
@@ -39,11 +41,25 @@ class ProcessPomegranatesAction
                 throw new RuntimeException('Cannot process more crates or weight than what is currently available.');
             }
 
+            $product = FinishedProduct::query()->firstOrCreate(
+                ['code' => $processType],
+                [
+                    'name' => $processType === 'peeling' ? 'Pomegranate Arils' : 'Pomegranate Juice',
+                    'type' => $processType,
+                    'unit' => 'kg',
+                    'is_active' => true,
+                ]
+            );
+
+            if (!$product->is_active) {
+                throw new RuntimeException('The finished product is inactive.');
+            }
+
             $load->available_crates_count -= $inputCratesCount;
-            $load->available_weight_kg = (float) $load->available_weight_kg - $inputWeightKg;
+            $load->available_weight_kg = round((float) $load->available_weight_kg - $inputWeightKg, 3);
             $load->save();
 
-            return $load->processingBatches()->create([
+            $batch = $load->processingBatches()->create([
                 'process_type' => $processType,
                 'input_crates_count' => $inputCratesCount,
                 'input_weight_kg' => $inputWeightKg,
@@ -53,6 +69,30 @@ class ProcessPomegranatesAction
                 'recorded_by' => $recordedBy,
                 'notes' => $notes,
             ]);
+
+            if ($outputWeightKg > 0) {
+                $stock = FinishedProductStock::query()
+                    ->where('finished_product_id', $product->id)
+                    ->lockForUpdate()
+                    ->firstOrCreate(
+                        ['finished_product_id' => $product->id],
+                        ['quantity' => 0]
+                    );
+
+                $stock->quantity = round((float) $stock->quantity + $outputWeightKg, 3);
+                $stock->save();
+
+                $product->transactions()->create([
+                    'processing_batch_id' => $batch->id,
+                    'type' => 'production',
+                    'quantity' => $outputWeightKg,
+                    'moved_at' => now(),
+                    'recorded_by' => $recordedBy,
+                    'notes' => $notes,
+                ]);
+            }
+
+            return $batch;
         });
     }
 }
