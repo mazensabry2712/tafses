@@ -10,7 +10,6 @@ use App\Models\PomegranateLoad;
 use App\Models\Supplier;
 use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use RuntimeException;
 
 uses(RefreshDatabase::class);
 
@@ -92,5 +91,5 @@ test('a custodian cannot return more than the open custody', function () {
     app(IssueCratesToCustodianAction::class)->execute($coldStore, $load, $custodian, 7, 140);
 
     expect(fn () => app(ReturnCustodyAction::class)->execute($coldStore, $load, $custodian, 8, 160, 'vehicle'))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(\RuntimeException::class);
 });
