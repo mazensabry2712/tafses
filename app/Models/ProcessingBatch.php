@@ -26,6 +26,6 @@ class ProcessingBatch extends Model
         ];
     }
 
-    public function load(): BelongsTo { return $this->belongsTo(PomegranateLoad::class, 'pomegranate_load_id'); }
+    public function pomegranateLoad(): BelongsTo { return $this->belongsTo(PomegranateLoad::class, 'pomegranate_load_id'); }
     public function recorder(): BelongsTo { return $this->belongsTo(User::class, 'recorded_by'); }
 }
