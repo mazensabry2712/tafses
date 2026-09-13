@@ -3,14 +3,14 @@
         <section>
             <p class="text-sm font-medium text-gray-500">تشغيل وتصنيع الرمان</p>
             <h1 class="mt-1 text-3xl font-bold">التصنيع</h1>
-            <p class="mt-2 text-sm text-gray-600">تحويل الرمان المتاح إلى حبوب أو عصير مع تسجيل الناتج والهالك.</p>
+            <p class="mt-2 text-sm text-gray-600">تحويل الرمان المتاح في البرادات إلى حبوب أو عصير مع تسجيل الناتج والهالك.</p>
         </section>
 
         <section class="grid gap-4 md:grid-cols-2">
             <div class="rounded-2xl border bg-white p-5 shadow-sm">
                 <p class="text-sm text-gray-500">حمولات متاحة للتصنيع</p>
                 <p class="mt-2 text-3xl font-bold">{{ $loads->count() }}</p>
-                <p class="mt-1 text-sm text-gray-500">حمولة بها أقفاص ووزن متاحان</p>
+                <p class="mt-1 text-sm text-gray-500">حمولات بها مخزون متاح</p>
             </div>
             <div class="rounded-2xl border bg-white p-5 shadow-sm">
                 <p class="text-sm text-gray-500">منتجات مصنعة</p>
@@ -22,25 +22,33 @@
         <section class="rounded-2xl border bg-white p-6 shadow-sm">
             <div class="mb-5">
                 <h2 class="text-xl font-bold">تسجيل دفعة تصنيع</h2>
-                <p class="mt-1 text-sm text-gray-500">اختر الحمولة وحدد نوع التشغيل والكميات الفعلية.</p>
+                <p class="mt-1 text-sm text-gray-500">اختر البراد الذي خرج منه الرمان، ثم سجل الكميات الفعلية.</p>
             </div>
 
             @forelse ($loads as $load)
-                <form method="POST" action="{{ route('processing.store', $load) }}" class="mb-4 grid gap-3 rounded-xl border p-4 lg:grid-cols-7">
+                <form method="POST" action="{{ route('processing.store', $load) }}" class="mb-4 grid gap-3 rounded-xl border p-4 lg:grid-cols-8">
                     @csrf
                     <div class="lg:col-span-2">
                         <div class="font-semibold">{{ $load->load_number }}</div>
-                        <div class="mt-1 text-xs text-gray-500">المتاح: {{ $load->available_crates_count }} قفص — {{ number_format((float) $load->available_weight_kg, 3) }} كجم</div>
+                        <div class="mt-1 text-xs text-gray-500">إجمالي المتاح للحمولة: {{ $load->available_crates_count }} قفص — {{ number_format((float) $load->available_weight_kg, 3) }} كجم</div>
                     </div>
+                    <select name="cold_store_id" required class="rounded-lg border-gray-300 lg:col-span-2">
+                        <option value="">اختر البراد</option>
+                        @foreach ($load->coldStoreStocks->filter(fn ($stock) => $stock->coldStore && $stock->crates_count > 0 && (float) $stock->weight_kg > 0) as $coldStoreStock)
+                            <option value="{{ $coldStoreStock->coldStore->id }}">
+                                {{ $coldStoreStock->coldStore->name }} — {{ $coldStoreStock->crates_count }} قفص / {{ number_format((float) $coldStoreStock->weight_kg, 3) }} كجم
+                            </option>
+                        @endforeach
+                    </select>
                     <select name="process_type" required class="rounded-lg border-gray-300">
                         <option value="peeling">تقشير / حبوب</option>
                         <option value="juice">عصير</option>
                     </select>
-                    <input name="input_crates_count" type="number" min="1" max="{{ $load->available_crates_count }}" required placeholder="أقفاص الداخل" class="rounded-lg border-gray-300">
-                    <input name="input_weight_kg" type="number" step="0.001" min="0.001" max="{{ $load->available_weight_kg }}" required placeholder="وزن الداخل كجم" class="rounded-lg border-gray-300">
+                    <input name="input_crates_count" type="number" min="1" required placeholder="أقفاص الداخل" class="rounded-lg border-gray-300">
+                    <input name="input_weight_kg" type="number" step="0.001" min="0.001" required placeholder="وزن الداخل كجم" class="rounded-lg border-gray-300">
                     <input name="output_weight_kg" type="number" step="0.001" min="0" required placeholder="الناتج كجم" class="rounded-lg border-gray-300">
                     <input name="waste_weight_kg" type="number" step="0.001" min="0" placeholder="الهالك كجم" class="rounded-lg border-gray-300">
-                    <div class="flex gap-2 lg:col-span-7">
+                    <div class="flex gap-2 lg:col-span-8">
                         <input name="notes" type="text" placeholder="ملاحظات" class="flex-1 rounded-lg border-gray-300">
                         <button class="rounded-lg bg-gray-900 px-5 py-2 font-semibold text-white hover:bg-gray-700">تسجيل التصنيع</button>
                     </div>
