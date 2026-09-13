@@ -20,7 +20,9 @@ class GetOperationalReportAction
         $to = $to->copy()->endOfDay();
 
         $loads = PomegranateLoad::query()->whereBetween('received_at', [$from, $to]);
-        $purchases = PomegranatePurchase::query()->whereBetween('purchased_at', [$from->toDateString(), $to->toDateString()]);
+        $purchases = PomegranatePurchase::query()
+            ->whereDate('purchased_at', '>=', $from->toDateString())
+            ->whereDate('purchased_at', '<=', $to->toDateString());
         $supplierPayments = SupplierPayment::query()->whereBetween('paid_at', [$from, $to]);
         $processing = ProcessingBatch::query()->whereBetween('processed_at', [$from, $to]);
         $sales = FinishedProductSale::query()->whereBetween('sold_at', [$from, $to]);
