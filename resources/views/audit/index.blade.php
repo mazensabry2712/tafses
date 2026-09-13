@@ -1,52 +1,31 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Tafses Audit Log</title>
-    <style>
-        body { font-family: sans-serif; margin: 2rem; background: #f7f7f7; }
-        h1 { margin-bottom: .25rem; }
-        .muted { color: #666; }
-        table { width: 100%; border-collapse: collapse; background: #fff; margin-top: 1.5rem; }
-        th, td { padding: .75rem; border-bottom: 1px solid #ddd; text-align: left; }
-        th { background: #f0f0f0; }
-        nav { margin-top: 1rem; }
-    </style>
-</head>
-<body>
-    <h1>Audit Log</h1>
-    <p class="muted">Authenticated activity recorded by user, role, route, method, and status.</p>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>User</th>
-                <th>Role</th>
-                <th>Action</th>
-                <th>Route</th>
-                <th>Method</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse ($logs as $log)
-                <tr>
-                    <td>{{ $log->created_at }}</td>
-                    <td>{{ $log->user?->name ?? 'Guest' }}</td>
-                    <td>{{ $log->role ?? '-' }}</td>
-                    <td>{{ $log->action }}</td>
-                    <td>{{ $log->route ?? $log->path }}</td>
-                    <td>{{ $log->method }}</td>
-                    <td>{{ $log->status_code ?? '-' }}</td>
-                </tr>
-            @empty
-                <tr><td colspan="7">No audit entries yet.</td></tr>
-            @endforelse
-        </tbody>
-    </table>
-
-    {{ $logs->links() }}
-</body>
-</html>
+<x-layouts.app title="سجل التدقيق">
+    <main dir="rtl" class="mx-auto max-w-7xl space-y-6 px-6 py-8">
+        <section>
+            <h1 class="text-2xl font-bold">سجل التدقيق</h1>
+            <p class="mt-1 text-sm text-gray-600">كل نشاط مسجل للمستخدمين مع المسار والطريقة وحالة الطلب.</p>
+        </section>
+        <section class="overflow-hidden rounded-2xl border bg-white shadow-sm">
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-right text-sm">
+                    <thead class="bg-gray-50"><tr class="border-b text-gray-500"><th class="px-4 py-3 font-medium">الوقت</th><th class="px-4 py-3 font-medium">المستخدم</th><th class="px-4 py-3 font-medium">الدور</th><th class="px-4 py-3 font-medium">الإجراء</th><th class="px-4 py-3 font-medium">المسار</th><th class="px-4 py-3 font-medium">الطريقة</th><th class="px-4 py-3 font-medium">الحالة</th></tr></thead>
+                    <tbody>
+                    @forelse ($logs as $log)
+                        <tr class="border-b last:border-0 hover:bg-gray-50">
+                            <td class="whitespace-nowrap px-4 py-3">{{ optional($log->created_at)->format('Y-m-d H:i:s') }}</td>
+                            <td class="px-4 py-3 font-semibold">{{ $log->user?->name ?? 'زائر' }}</td>
+                            <td class="px-4 py-3">{{ $log->role ?? '-' }}</td>
+                            <td class="px-4 py-3">{{ $log->action }}</td>
+                            <td class="px-4 py-3 font-mono text-xs">{{ $log->route ?? $log->path ?? '-' }}</td>
+                            <td class="px-4 py-3">{{ $log->method }}</td>
+                            <td class="px-4 py-3">{{ $log->status_code ?? '-' }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="7" class="px-4 py-10 text-center text-gray-500">لا توجد سجلات تدقيق حتى الآن.</td></tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <div>{{ $logs->links() }}</div>
+    </main>
+</x-layouts.app>
