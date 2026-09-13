@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Support\Permissions;
@@ -29,4 +30,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/accounting', fn () => 'Accounting area')
         ->middleware('permission:'.Permissions::MANAGE_PAYMENTS)
         ->name('accounting');
+
+    Route::get('/audit', [AuditLogController::class, 'index'])
+        ->middleware('permission:'.Permissions::VIEW_AUDIT)
+        ->name('audit.index');
 });
