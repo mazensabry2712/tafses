@@ -56,11 +56,11 @@ class WarehouseController extends Controller
         return back()->with('success', 'Custody issue recorded successfully.');
     }
 
-    public function return(Request $request, ColdStore $coldStore, PomegranateLoad $load, Custodian $custodian, ReturnCustodyAction $action): RedirectResponse
+    public function returnCustody(Request $request, ColdStore $coldStore, PomegranateLoad $load, Custodian $custodian, ReturnCustodyAction $action): RedirectResponse
     {
         $data = $request->validate([
             'crates_count' => ['required', 'integer', 'min:1'],
-            'weight_kg' => ['required', 'numeric', 'gt:0'],
+            'weight_kg' => ['nullable', 'numeric', 'gt:0'],
             'destination' => ['required', 'in:vehicle,cold_store'],
             'notes' => ['nullable', 'string'],
         ]);
@@ -70,7 +70,7 @@ class WarehouseController extends Controller
             $load,
             $custodian,
             (int) $data['crates_count'],
-            (float) $data['weight_kg'],
+            isset($data['weight_kg']) ? (float) $data['weight_kg'] : null,
             $data['destination'],
             $request->user()->id,
             $data['notes'] ?? null,
@@ -82,6 +82,7 @@ class WarehouseController extends Controller
     public function close(ColdStore $coldStore, CloseColdStoreAction $action): RedirectResponse
     {
         $action->execute($coldStore);
+
         return back()->with('success', 'Cold store closed successfully.');
     }
 }
