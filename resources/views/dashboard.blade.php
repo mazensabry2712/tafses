@@ -35,6 +35,7 @@
                 @canPermission('manage_custody')<a href="{{ route('warehouse.custody') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">العُهد</a>@endcanPermission
                 @canPermission('process_pomegranates')<a href="{{ route('processing.index') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">التصنيع</a>@endcanPermission
                 @canPermission('manage_sales')<a href="{{ route('sales.index') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">المبيعات والعملاء</a>@endcanPermission
+                @canPermission('manage_suppliers')<a href="{{ route('suppliers.index') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">الموردون والمشتريات</a>@endcanPermission
                 @canPermission('view_reports')<a href="{{ route('reports.index') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">التقارير</a>@endcanPermission
                 @canPermission('view_audit')<a href="{{ route('audit.index') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">سجل التدقيق</a>@endcanPermission
                 @canPermission('manage_users')<a href="{{ route('management') }}" class="block rounded-xl border px-4 py-3 font-medium hover:bg-gray-50">إدارة المستخدمين</a>@endcanPermission
