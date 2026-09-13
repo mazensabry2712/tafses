@@ -44,6 +44,14 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:'.Permissions::RECEIVE_LOADS)
         ->name('receiving.loads.store');
 
+    Route::get('/processing', [ProcessingController::class, 'index'])
+        ->middleware('permission:'.Permissions::PROCESS_POMEGRANATES)
+        ->name('processing.index');
+
+    Route::post('/processing/loads/{load}', [ProcessingController::class, 'store'])
+        ->middleware('permission:'.Permissions::PROCESS_POMEGRANATES)
+        ->name('processing.store');
+
     Route::post('/warehouse/loads/{load}/cold-store', [WarehouseController::class, 'moveToColdStore'])
         ->middleware('permission:'.Permissions::MANAGE_COLD_STORES)
         ->name('warehouse.loads.cold-store');
@@ -59,10 +67,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/warehouse/{coldStore}/close', [WarehouseController::class, 'close'])
         ->middleware('permission:'.Permissions::MANAGE_COLD_STORES)
         ->name('warehouse.close');
-
-    Route::post('/processing/loads/{load}', [ProcessingController::class, 'store'])
-        ->middleware('permission:'.Permissions::PROCESS_POMEGRANATES)
-        ->name('processing.store');
 
     Route::get('/reports', [ReportsController::class, 'index'])
         ->middleware('permission:'.Permissions::VIEW_REPORTS)
