@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Models\PomegranateLoad;
 use App\Models\PomegranatePurchase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
 class CreatePomegranatePurchaseAction
@@ -54,7 +55,9 @@ class CreatePomegranatePurchaseAction
             }
 
             if (PomegranatePurchase::query()->where('pomegranate_load_id', $load->id)->exists()) {
-                throw new InvalidArgumentException('A purchase has already been recorded for this load.');
+                throw ValidationException::withMessages([
+                    'pomegranate_load_id' => 'تم تسجيل شراء لهذه الحمولة بالفعل.',
+                ]);
             }
 
             $purchase = PomegranatePurchase::create([
