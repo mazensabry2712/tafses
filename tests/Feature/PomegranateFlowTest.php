@@ -6,7 +6,6 @@ use App\Models\PomegranateLoad;
 use App\Models\Supplier;
 use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use RuntimeException;
 
 uses(RefreshDatabase::class);
 
