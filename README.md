@@ -1,7 +1,7 @@
 # Tafses
 
 ## Tafses backend
-Tafses is a Laravel system for a pomegranate peeling and juice business. The backend is being built first around the real physical and financial workflow: vehicle arrival, separate cold stores (`براد 1`, `براد 2`, etc.), open crate custody, processing, finished-product stock, sales, customer payments, supplier purchases, and balances.
+Tafses is a Laravel system for a pomegranate peeling and juice business. The backend is being built first around the real physical and financial workflow: vehicle arrival, separate cold stores (`براد 1`, `براد 2`, etc.), open crate custody, processing, finished-product stock, sales, customer payments, supplier purchases, balances, and operational reporting.
 
 ## Physical flow
 ```text
@@ -71,8 +71,8 @@ When a cold-store operation does not receive an explicit weight, the assigned cr
 ## Processing and finished products
 Raw pomegranate available for processing can be processed into either:
 
-- `peeling` → Pomegranate Arils
-- `juice` → Pomegranate Juice
+- `peeling` -> Pomegranate Arils
+- `juice` -> Pomegranate Juice
 - plus recorded waste
 
 Each finished product has its own current stock and transaction ledger. Production increases finished stock; sales decrease finished stock.
@@ -103,6 +103,21 @@ Rules:
 - Later payments may be linked to a specific invoice and cannot exceed that invoice's remaining balance.
 - Invoice status is `unpaid`, `partial`, or `paid`.
 - Customer balance is `sales total - paid total`.
+
+## Operational reports
+`GetOperationalReportAction` is a reusable reporting layer that accepts a `from` and `to` date/time and can therefore power daily, monthly, or custom-period reports without duplicating business logic.
+
+The report currently summarizes:
+
+- receiving: incoming loads, crates, and weight;
+- purchases: purchase count, total, paid, and remaining supplier balance for the period;
+- supplier payments: count and total paid;
+- processing: batches, input crates/weight, output, waste, plus peeling/juice breakdown;
+- sales: invoice count, total sales, paid amount, and customer balance generated in the period;
+- current finished-product stock;
+- current active cold-store stock and outstanding custody crates.
+
+This keeps operational reporting separate from stock-changing actions while using the same persisted balances and ledgers as the source of truth.
 
 ## Database concepts
 - `suppliers`: suppliers / farmers / traders.
@@ -138,6 +153,7 @@ Rules:
 - `CreateFinishedProductSaleAction`: creates an invoice, validates stock, reduces finished-product stock, and records the sale ledger movement.
 - `RecordCustomerPaymentAction`: records a customer payment and updates the linked invoice status/balance.
 - `GetCustomerBalanceAction`: returns customer sales total, paid total, and balance due.
+- `GetOperationalReportAction`: builds daily/monthly/custom-period operational summaries.
 - `GetPomegranateLoadSummaryAction`: builds an operational summary for one load.
 - `CreatePomegranatePurchaseAction`: creates supplier purchase pricing tied to an incoming load.
 - `RecordSupplierPaymentAction`: records a supplier payment while protecting the remaining balance.
@@ -168,7 +184,7 @@ Vehicle: 100 crates / 2,000 kg
 3. Supplier purchases, prices, payments, and supplier balances ✅
 4. Finished-product stock for peeling/juice ✅
 5. Finished-product sales, customers, and customer payments ✅
-6. Daily/monthly reports and operational dashboards
+6. Daily/monthly operational reports ✅
 7. Authentication, roles, permissions, and audit access
 8. Blade frontend on top of the completed domain layer
 
