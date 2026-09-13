@@ -103,7 +103,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports', [ReportsController::class, 'index'])
         ->middleware('permission:'.Permissions::VIEW_REPORTS)
         ->name('reports.index');
-    Route::get('/accounting', AccountingController::class)
+    Route::get('/accounting', [AccountingController::class, 'index'])
         ->middleware('permission:'.Permissions::MANAGE_PAYMENTS)
         ->name('accounting');
     Route::get('/audit', [AuditLogController::class, 'index'])
