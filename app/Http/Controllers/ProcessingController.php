@@ -3,12 +3,29 @@
 namespace App\Http\Controllers;
 
 use App\Actions\ProcessPomegranatesAction;
+use App\Models\FinishedProduct;
 use App\Models\PomegranateLoad;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class ProcessingController extends Controller
 {
+    public function index()
+    {
+        return view('processing.index', [
+            'loads' => PomegranateLoad::query()
+                ->where('available_crates_count', '>', 0)
+                ->where('available_weight_kg', '>', 0)
+                ->orderByDesc('received_at')
+                ->get(),
+            'products' => FinishedProduct::query()
+                ->with('stock')
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(),
+        ]);
+    }
+
     public function store(Request $request, PomegranateLoad $load, ProcessPomegranatesAction $action): RedirectResponse
     {
         $data = $request->validate([
@@ -31,6 +48,6 @@ class ProcessingController extends Controller
             $data['notes'] ?? null,
         );
 
-        return back()->with('success', 'Processing batch recorded successfully.');
+        return back()->with('success', 'تم تسجيل دفعة التصنيع بنجاح.');
     }
 }
